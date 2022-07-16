@@ -11,7 +11,7 @@ import {
 import { PLATFORM_NAME, PLUGIN_NAME } from "../settings";
 import { InstallationAccesory } from "../accesories/installation.accesory";
 import { Container } from "typedi";
-import { ProsegurService } from "../service/prosegur.service";
+import { ProsegurService } from "../services/prosegur.service";
 
 export class ProsegurPlatform implements DynamicPlatformPlugin {
     public readonly Service: typeof Service = this.api.hap.Service;
@@ -70,7 +70,10 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                 new InstallationAccesory(this, existingInstallation);
             } else {
                 // the installation does not exist, so we need to create it
-                this.log.info("Adding new installation:", installation.description);
+                this.log.info(
+                    "Adding new installation:",
+                    installation.description,
+                );
                 const accessory = new this.api.platformAccessory(
                     installation.description,
                     uuid,
@@ -93,7 +96,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                 installationResponse.data.find(
                     (installation) =>
                         installation.installationId ===
-                        existing.context.installationId,
+                        existing.context.installation.installationId,
                 )
                     ? false
                     : existing,

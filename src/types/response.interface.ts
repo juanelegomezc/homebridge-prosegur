@@ -98,7 +98,11 @@ export interface AuthResponse extends Response{
     data: AuthData;
 }
 
-export interface InstallationResponse extends Response {
+export interface InstallationsResponse extends Response {
     data: Installation[];
+}
+
+export interface InstallationResponse extends Response {
+    data: Installation;
 }
 

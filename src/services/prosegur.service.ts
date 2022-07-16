@@ -5,8 +5,9 @@ import { Service } from "typedi";
 import { AuthRequest } from "../types/auth-request.interface";
 import {
     AuthResponse,
-    InstallationResponse,
+    InstallationsResponse,
     Response,
+    InstallationResponse,
 } from "../types/response.interface";
 import { Country, CountryCode } from "../types/country.interface";
 import { Logger, PlatformConfig } from "homebridge";
@@ -71,7 +72,11 @@ export class ProsegurService {
                 platform: "smart2",
                 provider: undefined,
             };
-            this.log!.debug(`Login with data: ${JSON.stringify(this.cleanRequestPassword(request))}`);
+            this.log!.debug(
+                `Login with data: ${JSON.stringify(
+                    this.cleanRequestPassword(request),
+                )}`,
+            );
             const requestConfig: AxiosRequestConfig = {
                 headers: this.headers,
             };
@@ -92,9 +97,9 @@ export class ProsegurService {
         }
     }
 
-    async getInstallations(): Promise<InstallationResponse> {
+    async getInstallations(): Promise<InstallationsResponse> {
         try {
-            const installations = await this.request<InstallationResponse>(
+            const installations = await this.request<InstallationsResponse>(
                 "get",
                 "/installation",
             );
@@ -123,18 +128,22 @@ export class ProsegurService {
 
     async getStatus(installationId: string): Promise<AlarmStatus> {
         try {
-            const installations = await this.request<InstallationResponse>(
+            const response = await this.request<InstallationResponse>(
                 "get",
-                "/installation/",
+                `/installation/${installationId}`,
             );
-            return (
-                installations.data.find(
-                    (installation) =>
-                        installation.installationId === installationId,
-                )?.status ?? AlarmStatus.GENERAL_ERROR
-            );
+            const installation = response.data;
+            if (installation) {
+                this.log!.debug(
+                    `Installation: ${JSON.stringify(installation)}`,
+                );
+                return installation.status;
+            }
+            this.log!.debug("No installation found");
+            return AlarmStatus.DISARMED;
         } catch (error) {
-            return AlarmStatus.GENERAL_ERROR;
+            this.log!.debug("Error fetching installation information");
+            return AlarmStatus.DISARMED;
         }
     }
 
@@ -144,7 +153,11 @@ export class ProsegurService {
         data?: unknown,
         retry = true,
     ): Promise<T> {
-        this.log!.debug(`Requesting ${path}, method: ${method.toUpperCase()}, data: ${JSON.stringify(data)}`);
+        this.log!.debug(
+            `Requesting ${path}, method: ${method.toUpperCase()}, data: ${JSON.stringify(
+                data,
+            )}`,
+        );
         let retryCount = 0;
         let response: AxiosResponse<T>;
         do {
@@ -171,7 +184,7 @@ export class ProsegurService {
 
             try {
                 response = await axios.request<T>(request);
-            } catch(error) {
+            } catch (error) {
                 this.log!.error((error as Error).message);
                 return Promise.reject(error);
             }
@@ -220,7 +233,7 @@ export class ProsegurService {
     }
 
     private cleanRequestPassword(request: AuthRequest): AuthRequest {
-        const newReq = {...request};
+        const newReq = { ...request };
         newReq.password = "*****";
         return newReq;
     }

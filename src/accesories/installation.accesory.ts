@@ -1,8 +1,4 @@
-import {
-    Service,
-    PlatformAccessory,
-    CharacteristicValue,
-} from "homebridge";
+import { Service, PlatformAccessory, CharacteristicValue } from "homebridge";
 
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
 import { AlarmStatus } from "../types/alarm-status.enum";
@@ -18,8 +14,8 @@ export class InstallationAccesory {
     ];
 
     private readonly error_map = {
-        "error": 0,
-        "ok": 1,
+        error: 0,
+        ok: 1,
     };
 
     constructor(
@@ -43,9 +39,6 @@ export class InstallationAccesory {
             accessory.displayName,
         );
 
-        // each service must implement at-minimum the "required characteristics" for the given service type
-        // see https://developers.homebridge.io/#/service/
-
         this.service
             .getCharacteristic(
                 this.platform.Characteristic.SecuritySystemCurrentState,
@@ -62,8 +55,9 @@ export class InstallationAccesory {
     }
 
     async setStatus(value: CharacteristicValue) {
-        // implement your own code to turn your device on/off
-        const installationId = this.accessory.context.installationId;
+        this.platform.log!.debug(`Setting installation status, value: ${this.statesMap[value as number]}`);
+        const installationId =
+            this.accessory.context.installation.installationId;
         this.platform.prosegurService.setStatus(
             installationId,
             this.statesMap[value as number],
@@ -71,15 +65,20 @@ export class InstallationAccesory {
     }
 
     async getStatus(): Promise<CharacteristicValue> {
-        const installationId = this.accessory.context.installationId;
+        this.platform.log!.debug("Requesting installation status");
+        const installationId =
+            this.accessory.context.installation.installationId;
         const status = await this.platform.prosegurService.getStatus(
             installationId,
         );
+        this.platform.log!.debug(`Status: ${status}`);
         return this.statesMap.findIndex((state) => state === status);
     }
 
     async getFaultStatus(): Promise<CharacteristicValue> {
-        const installationId = this.accessory.context.installationId;
+        this.platform.log!.debug("Requesting installation fault status");
+        const installationId =
+            this.accessory.context.insallation.installationId;
         const status = await this.platform.prosegurService.getStatus(
             installationId,
         );
