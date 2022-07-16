@@ -4,5 +4,5 @@ export interface AuthRequest {
     language: string;
     origin: string;
     platform: string;
-    provider: string | undefined;
+    provider?: string;
 }
