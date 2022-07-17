@@ -1,5 +1,5 @@
 {
-  "private": true,
+  "private": false,
   "displayName": "Prosegur",
   "name": "homebridge-prosegur",
   "version": "1.0.0",
