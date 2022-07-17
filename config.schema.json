@@ -1,15 +1,49 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "Prosegur",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
       "name": {
-        "title": "Name",
+        "title": "The name of your alarm on HomeKit",
+        "type": "string",
+        "required": true
+      },
+      "username": {
+        "title": "Email or user",
+        "type": "string",
+        "required": true
+      },
+      "password": {
+        "title": "Password",
+        "type": "string",
+        "required": true
+      },
+      "country": {
+        "title": "Country",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "oneOf": [
+          {
+            "title": "Portugal",
+            "enum": [
+              "PT"
+            ]
+          },
+          {
+            "title": "Spain",
+            "enum": [
+              "ES"
+            ]
+          },
+          {
+            "title": "Colombia",
+            "enum": [
+              "CO"
+            ]
+          }
+        ]
       }
     }
   }
