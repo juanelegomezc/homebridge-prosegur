@@ -2,8 +2,9 @@
   "private": false,
   "displayName": "Prosegur",
   "name": "homebridge-prosegur",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Prosegur plugin for Homebridge",
+  "author": "Juan Luis Gómez",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -24,7 +25,12 @@
     "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "homebridge",
+    "homekit",
+    "prosegur",
+    "security-system",
+    "security"
   ],
   "dependencies": {
     "axios": "^0.27.2",

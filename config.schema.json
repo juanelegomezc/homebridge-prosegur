@@ -26,6 +26,12 @@
         "required": true,
         "oneOf": [
           {
+            "title": "Colombia",
+            "enum": [
+              "CO"
+            ]
+          },
+          {
             "title": "Portugal",
             "enum": [
               "PT"
@@ -35,12 +41,6 @@
             "title": "Spain",
             "enum": [
               "ES"
-            ]
-          },
-          {
-            "title": "Colombia",
-            "enum": [
-              "CO"
             ]
           }
         ]
