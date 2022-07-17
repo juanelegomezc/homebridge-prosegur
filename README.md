@@ -1,7 +1,7 @@
 
 # homebridge-prosegur
 
-This is a [Homebridge](https://github.com/homebridge/homebridge) for Prosegur alarms users that allow homeowners to control their security system. The plugin currently supports Prosegur alarms in Colombia, Portugal and Spain.
+This is a [Homebridge](https://github.com/homebridge/homebridge) plugin for Prosegur alarms users that allow homeowners to control their security system. The plugin currently supports Prosegur alarms in Colombia, Portugal and Spain.
 
 To use this plugin, here are three simple steps you need to follow:
 1. Run `npm install homebridge-prosegur`
