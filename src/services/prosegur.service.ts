@@ -50,16 +50,23 @@ export class ProsegurService {
 
     init(config: PlatformConfig, log: Logger): void {
         this.log = log;
-        this.username = config.username;
-        this.password = config.password;
-        this.countryCode = config.country;
-        this.country = this.COUNTRIES[this.countryCode!];
-        this.headers = {
-            Accept: "application/json, text/plain, */*",
-            "Content-Type": "application/json;charset=UTF-8",
-            Origin: this.country!.origin,
-            Referer: this.country!.referer,
-        };
+        try {
+            this.username = config.username;
+            this.password = config.password;
+            this.countryCode = config.country;
+            this.country = this.COUNTRIES[this.countryCode!];
+            this.headers = {
+                Accept: "application/json, text/plain, */*",
+                "Content-Type": "application/json;charset=UTF-8",
+                Origin: this.country!.origin,
+                Referer: this.country!.referer,
+            };
+        } catch (error) {
+            this.log.debug(
+                "Invalid configuration, check configuration options on "
+                + "https://github.com/juanelegomezc/homebridge-prosegur#configuration",
+            );
+        }
     }
 
     async login(): Promise<void> {
@@ -88,12 +95,12 @@ export class ProsegurService {
             this.log!.debug(`Response ${JSON.stringify(response.data)}`);
 
             if (response.status !== 200) {
-                Promise.reject("Could not login");
+                return Promise.reject(new Error("Could not login"));
             }
             this.headers![this.TOKEN_HEADER] = response.data.data.token;
         } catch (error) {
             this.log!.error(JSON.stringify(error));
-            Promise.reject(error);
+            return Promise.reject(error);
         }
     }
 
@@ -105,7 +112,7 @@ export class ProsegurService {
             );
             return installations;
         } catch (error) {
-            return Promise.reject("Error fetching installations information");
+            return Promise.reject(error);
         }
     }
 
@@ -163,7 +170,12 @@ export class ProsegurService {
         do {
             if (!this.isLoggedIn()) {
                 this.log!.debug("No X-Smart-Token, attempting login");
-                await this.login();
+                try {
+                    await this.login();
+                } catch (error) {
+                    this.log?.error("Error login in");
+                    return Promise.reject(error);
+                }
             }
 
             const request: AxiosRequestConfig = {
@@ -176,7 +188,7 @@ export class ProsegurService {
                 if (!data) {
                     this.log!.debug("No data ");
                     return Promise.reject(
-                        `No data for ${method.toUpperCase()}  method call`,
+                        new Error(`No data for ${method.toUpperCase()}  method call`),
                     );
                 }
                 request.data = data;
@@ -196,7 +208,7 @@ export class ProsegurService {
                 retryCount++;
                 if (!retry || retryCount > 3) {
                     this.log!.error("Max retries exceded");
-                    return Promise.reject("Connection error");
+                    return Promise.reject(new Error("Connection error"));
                 }
             }
 
@@ -208,7 +220,7 @@ export class ProsegurService {
                 retryCount++;
                 if (!retry || retryCount > 1) {
                     this.log!.error("Max retries exceded");
-                    return Promise.reject("Connection error");
+                    return Promise.reject(new Error("Connection error"));
                 }
             }
 
@@ -216,7 +228,7 @@ export class ProsegurService {
                 this.log!.error(
                     `Call to API failed with status ${response.status}: ${response.statusText}`,
                 );
-                return Promise.reject("Call to API failed");
+                return Promise.reject(new Error(`Call to API failed with status: ${response.status}`));
             }
             retry = response.status !== 200;
         } while (retry);
