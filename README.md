@@ -1,6 +1,8 @@
 
 # homebridge-prosegur
 
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 This is a [Homebridge](https://github.com/homebridge/homebridge) plugin for Prosegur alarms users that allow homeowners to control their security system. The plugin currently supports Prosegur alarms in Colombia, Portugal and Spain.
 
 To use this plugin, here are three simple steps you need to follow:
