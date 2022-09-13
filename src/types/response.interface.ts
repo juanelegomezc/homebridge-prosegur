@@ -94,6 +94,36 @@ export interface Response {
     };
 }
 
+export interface CameraAuth {
+    accessToken: string;
+    sessionId: string;
+    userId: string;
+    url: string;
+    code: string;
+    obfuscated: boolean;
+}
+
+export interface CameraStream {
+    "streamId": {
+        "value": number;
+    };
+    "urls": {
+        "rtsp": string;
+        "rtspHttp": string;
+        "rtspHttps": string;
+        "hlsHttp": string;
+        "hlsHttps": string;
+        "multipartHttp": string;
+        "multipartHttps": string;
+        "multipartaudioHttp": string;
+        "multipartaudioHttps": string;
+        "mjpegHttp": string;
+        "mjpegHttps": string;
+        "audioPushHttp": string;
+        "audioPushHttps": string;
+    };
+}
+
 export interface AuthResponse extends Response{
     data: AuthData;
 }
@@ -104,5 +134,9 @@ export interface InstallationsResponse extends Response {
 
 export interface InstallationResponse extends Response {
     data: Installation;
+}
+
+export interface CameraResponse extends Response {
+    data: CameraAuth;
 }
 

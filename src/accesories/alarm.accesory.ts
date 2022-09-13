@@ -1,61 +1,65 @@
-import { Service, PlatformAccessory, CharacteristicValue } from "homebridge";
+import {
+    Service,
+    PlatformAccessory,
+    CharacteristicValue,
+} from "homebridge";
 
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
 import { AlarmStatus } from "../types/alarm-status.enum";
 
-export class InstallationAccesory {
+export class AlarmAccesory {
     private service: Service;
     private readonly statesMap = [
-        AlarmStatus.PARTIALLY,
-        AlarmStatus.ARMED,
-        AlarmStatus.PARTIALLY,
-        AlarmStatus.DISARMED,
-        AlarmStatus.ALARM,
+        AlarmStatus.PARTIALLY, // STAY_ARM = 0
+        AlarmStatus.ARMED, // AWAY_ARM = 1
+        AlarmStatus.PARTIALLY, // NIGHT_ARM = 2
+        AlarmStatus.DISARMED, // DISARMED = 3
+        AlarmStatus.ALARM, // ALARM_TRIGGERED = 4
     ];
-
-    private readonly error_map = {
-        error: 0,
-        ok: 1,
-    };
 
     constructor(
         private readonly platform: ProsegurPlatform,
         private readonly accessory: PlatformAccessory,
     ) {
-        // set accessory information
-        this.accessory
-            .getService(this.platform.Service.AccessoryInformation)!
-            .setCharacteristic(
-                this.platform.Characteristic.Manufacturer,
-                "Prosegur",
-            );
-
         this.service =
             this.accessory.getService(this.platform.Service.SecuritySystem) ||
             this.accessory.addService(this.platform.Service.SecuritySystem);
 
-        this.service.setCharacteristic(
-            this.platform.Characteristic.Name,
-            accessory.displayName,
-        );
+        // set accessory information
+        this.service
+            .setCharacteristic(
+                this.platform.Characteristic.Manufacturer,
+                "Prosegur",
+            )
+            .setCharacteristic(
+                this.platform.Characteristic.Name,
+                accessory.displayName,
+            );
 
         this.service
             .getCharacteristic(
                 this.platform.Characteristic.SecuritySystemCurrentState,
             )
             .onGet(this.getStatus.bind(this));
+
         this.service
             .getCharacteristic(
                 this.platform.Characteristic.SecuritySystemTargetState,
             )
-            .onSet(this.setStatus.bind(this));
+            .onSet(this.setStatus.bind(this))
+            .onGet(this.getStatus.bind(this));
+
         this.service
             .getCharacteristic(this.platform.Characteristic.StatusFault)
             .onSet(this.getFaultStatus.bind(this));
     }
 
     async setStatus(value: CharacteristicValue) {
-        this.platform.log!.debug(`Setting installation status, value: ${this.statesMap[value as number]}`);
+        this.platform.log!.debug(
+            `Setting installation status, value: ${
+                this.statesMap[value as number]
+            }`,
+        );
         const installationId =
             this.accessory.context.installation.installationId;
         this.platform.prosegurService.setStatus(
@@ -90,9 +94,9 @@ export class InstallationAccesory {
             case AlarmStatus.ERROR_PARTIALLY:
             case AlarmStatus.ERROR_PARTIALLY_COMMUNICATIONS:
             case AlarmStatus.GENERAL_ERROR:
-                return this.error_map.error;
+                return this.platform.Characteristic.StatusFault.GENERAL_FAULT;
             default:
-                return this.error_map.ok;
+                return this.platform.Characteristic.StatusFault.NO_FAULT;
         }
     }
 }

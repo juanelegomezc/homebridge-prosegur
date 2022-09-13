@@ -8,10 +8,12 @@ import {
     InstallationsResponse,
     Response,
     InstallationResponse,
+    CameraResponse,
 } from "../types/response.interface";
 import { Country, CountryCode } from "../types/country.interface";
 import { Logger, PlatformConfig } from "homebridge";
 import { AlarmStatus } from "../types/alarm-status.enum";
+import { ConfigService } from "./config.service";
 
 @Service({ transient: true })
 export class ProsegurService {
@@ -46,23 +48,24 @@ export class ProsegurService {
         private countryCode: string,
         private username: string,
         private password: string,
+        private configService: ConfigService,
     ) {}
 
     init(config: PlatformConfig, log: Logger): void {
         this.log = log;
-        try {
+        if(this.configService.validateConfig(config)) {
             this.username = config.username;
             this.password = config.password;
             this.countryCode = config.country;
-            this.country = this.COUNTRIES[this.countryCode!];
+            this.country = this.COUNTRIES[this.countryCode];
             this.headers = {
                 Accept: "application/json, text/plain, */*",
                 "Content-Type": "application/json;charset=UTF-8",
                 Origin: this.country!.origin,
                 Referer: this.country!.referer,
             };
-        } catch (error) {
-            this.log.debug(
+        } else {
+            this.log.error(
                 "Invalid configuration, check configuration options on "
                 + "https://github.com/juanelegomezc/homebridge-prosegur#configuration",
             );
@@ -72,10 +75,10 @@ export class ProsegurService {
     async login(): Promise<void> {
         try {
             const request: AuthRequest = {
-                user: this.username!,
-                password: this.password!,
+                user: this.username,
+                password: this.password,
                 language: "en_US",
-                origin: this.country!.origin,
+                origin: this.country.origin,
                 platform: "smart2",
                 provider: undefined,
             };
@@ -154,10 +157,17 @@ export class ProsegurService {
         }
     }
 
+    loginCameraManager(cameraId: string): Promise<CameraResponse> {
+        return this.request<CameraResponse>(
+            "get",
+            `/video2/camera/${cameraId}/play/`,
+        );
+    }
+
     private async request<T extends Response>(
         method: string,
         path: string,
-        data?: unknown,
+        data?: Record<string, unknown>,
         retry = true,
     ): Promise<T> {
         this.log!.debug(
