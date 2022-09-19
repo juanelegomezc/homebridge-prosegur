@@ -1,5 +1,32 @@
 import { AlarmStatus } from "./alarm-status.enum";
 
+export interface Camera {
+    id: string;
+    description: string;
+    type: string;
+    provider: string;
+    microphoneSupport: boolean;
+    speakerSupport: boolean;
+    playAudioSupport: boolean;
+    panTiltSupport: boolean;
+    zoomSupport: boolean;
+    audioDetectorSupport: boolean;
+    motionDetectorSupport: boolean;
+    doorbellSupport: boolean;
+    analyticsSupport: boolean;
+    audioStatus: boolean;
+    audioDetectorStatus: boolean;
+    motionDetectorStatus: boolean;
+    doorbellStatus: boolean;
+    analyticsStatus: boolean;
+    personDetectionOnlyStatus: boolean;
+    daysOfRecordings: number;
+    areas: unknown[];
+    cameraStatus: string;
+    wifiSupport: boolean;
+    modePrivateStatus: boolean;
+}
+
 interface Installation {
         installationId: string;
         description: string;
@@ -15,32 +42,8 @@ interface Installation {
                 type: string;
                 streaming: boolean;
         }[];
-        videoDetectors: {
-                id: string;
-                description: string;
-                type: string;
-                provider: string;
-                microphoneSupport: boolean;
-                speakerSupport: boolean;
-                playAudioSupport: boolean;
-                panTiltSupport: boolean;
-                zoomSupport: boolean;
-                audioDetectorSupport: boolean;
-                motionDetectorSupport: boolean;
-                doorbellSupport: boolean;
-                analyticsSupport: boolean;
-                audioStatus: boolean;
-                audioDetectorStatus: boolean;
-                motionDetectorStatus: boolean;
-                doorbellStatus: boolean;
-                analyticsStatus: boolean;
-                personDetectionOnlyStatus: boolean;
-                daysOfRecordings: number;
-                areas: unknown[];
-                cameraStatus: string;
-                wifiSupport: boolean;
-                modePrivateStatus: boolean;
-            }[];
+        videoDetectors:
+                Camera[];
         services: {
                 type: string;
                 statusCode: number;

@@ -3,7 +3,9 @@
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-This is a [Verified Homebridge plugin](https://github.com/homebridge/homebridge/wiki/Verified-Plugins) for Prosegur alarms users that allow homeowners to control their security system. The plugin currently supports Prosegur alarms in Colombia, Portugal and Spain.
+This is a [Verified Homebridge plugin](https://github.com/homebridge/homebridge/wiki/Verified-Plugins) for Prosegur alarms users that allow homeowners to control their security system. The plugin currently supports Prosegur alarms in Colombia, it should also work in Portugal and Spain though it hasn't been tested there.
+
+Video streming support in beta, looking to improve performance in future versions.
 
 To use this plugin, here are three simple steps you need to follow:
 1. Run `npm install homebridge-prosegur`
@@ -42,3 +44,4 @@ The component uses the API provided by the Web Application.
 Has only been tested in Colombia, but should also work in Spain and Portugal.  
 ## Credits and Appreciation
 Based on the [pyprosegur](https://github.com/dgomes/pyprosegur) library by [@dgomes](https://github.com/dgomes)
+Video streaming suppport based on [homebridge-camera-ffmpeg](https://github.com/Sunoo/homebridge-camera-ffmpeg).

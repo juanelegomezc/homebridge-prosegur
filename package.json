@@ -34,6 +34,8 @@
   ],
   "dependencies": {
     "axios": "^0.27.2",
+    "ffmpeg-for-homebridge": "^0.1.4",
+    "pick-port": "^1.0.1",
     "reflect-metadata": "^0.1.13",
     "typedi": "^0.10.0"
   },
@@ -42,7 +44,7 @@
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
-    "homebridge": "^1.3.5",
+    "homebridge": "^1.4.0",
     "nodemon": "^2.0.13",
     "rimraf": "^3.0.2",
     "ts-node": "^10.3.0",

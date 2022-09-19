@@ -28,7 +28,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
     constructor(
         public readonly log: Logger,
         public readonly config: PlatformConfig,
-        public readonly api: API,
+        public readonly api: API
     ) {
         this.log.debug("Finished initializing platform:", this.config.name);
         this.prosegurService.init(config, log);
@@ -52,19 +52,19 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
 
             for (const installation of installationResponse.data) {
                 const uuid = this.api.hap.uuid.generate(
-                    installation.installationId,
+                    installation.installationId
                 );
 
                 // see if an accessory with the same uuid has already been registered and restored from the cached devices
                 const existingInstallation = this.accessories.find(
-                    (accessory) => accessory.UUID === uuid,
+                    (accessory) => accessory.UUID === uuid
                 );
 
                 if (existingInstallation) {
                     // the installation already exists
                     this.log.info(
                         "Restoring existing installation from cache:",
-                        existingInstallation.displayName,
+                        existingInstallation.displayName
                     );
 
                     existingInstallation.context.installation = installation;
@@ -74,11 +74,11 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                     // the installation does not exist, so we need to create it
                     this.log.info(
                         "Adding new installation:",
-                        installation.description,
+                        installation.description
                     );
                     const accessory = new this.api.platformAccessory(
                         installation.description,
-                        uuid,
+                        uuid
                     );
                     accessory.context.installation = installation;
                     new AlarmAccesory(this, accessory);
@@ -92,14 +92,14 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                         const uuid = this.api.hap.uuid.generate(`${camera.id}`);
                         // see if an accessory with the same uuid has already been registered and restored from the cached devices
                         const existingCamera = this.accessories.find(
-                            (accessory) => accessory.UUID === uuid,
+                            (accessory) => accessory.UUID === uuid
                         );
 
                         if (existingCamera) {
                             // the camera already exists
                             this.log.info(
                                 "Restoring existing camera from cache:",
-                                existingCamera.displayName,
+                                existingCamera.displayName
                             );
 
                             existingCamera.context.camera = camera;
@@ -109,11 +109,11 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                             // the camera does not exist, so we need to create it
                             this.log.info(
                                 "Adding new camera:",
-                                camera.description,
+                                camera.description
                             );
                             const accessory = new this.api.platformAccessory(
                                 camera.description,
-                                uuid,
+                                uuid
                             );
                             accessory.context.camera = camera;
                             new CameraAccesory(this, accessory);
@@ -126,19 +126,19 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
             if (newAccesories.length > 0) {
                 this.log.info(
                     "Register new accesories:" +
-                        newAccesories.map((item) => item.displayName),
+                        newAccesories.map((item) => item.displayName)
                 );
                 this.api.registerPlatformAccessories(
                     PLUGIN_NAME,
                     PLATFORM_NAME,
-                    newAccesories,
+                    newAccesories
                 );
             }
 
             if (existingAccessories.length > 0) {
                 this.log.info(
                     "Register existing accesories:" +
-                        existingAccessories.map((item) => item.displayName),
+                        existingAccessories.map((item) => item.displayName)
                 );
                 this.api.updatePlatformAccessories(existingAccessories);
             }
@@ -154,22 +154,22 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                         } else if (existing.context.camera) {
                             return installation.videoDetectors.find(
                                 (camera) =>
-                                    camera.id === existing.context.camera.id,
+                                    camera.id === existing.context.camera.id
                             );
                         }
                     })
                         ? false
-                        : existing,
+                        : existing
                 );
             if (removedAccesories.length > 0) {
                 this.log.info(
                     "Removing accesories:" +
-                        removedAccesories.map((item) => item.displayName),
+                        removedAccesories.map((item) => item.displayName)
                 );
                 this.api.unregisterPlatformAccessories(
                     PLUGIN_NAME,
                     PLATFORM_NAME,
-                    removedAccesories,
+                    removedAccesories
                 );
             }
         } catch (error) {

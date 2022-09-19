@@ -34,6 +34,10 @@ export class AlarmAccesory {
             .setCharacteristic(
                 this.platform.Characteristic.Name,
                 accessory.displayName,
+            )
+            .setCharacteristic(
+                this.platform.Characteristic.SerialNumber,
+                accessory.context.installation.installationId,
             );
 
         this.service
@@ -51,11 +55,11 @@ export class AlarmAccesory {
 
         this.service
             .getCharacteristic(this.platform.Characteristic.StatusFault)
-            .onSet(this.getFaultStatus.bind(this));
+            .onGet(this.getFaultStatus.bind(this));
     }
 
     async setStatus(value: CharacteristicValue) {
-        this.platform.log!.debug(
+        this.platform.log.debug(
             `Setting installation status, value: ${
                 this.statesMap[value as number]
             }`,
@@ -69,20 +73,20 @@ export class AlarmAccesory {
     }
 
     async getStatus(): Promise<CharacteristicValue> {
-        this.platform.log!.debug("Requesting installation status");
+        this.platform.log.debug("Requesting installation status");
         const installationId =
             this.accessory.context.installation.installationId;
         const status = await this.platform.prosegurService.getStatus(
             installationId,
         );
-        this.platform.log!.debug(`Status: ${status}`);
+        this.platform.log.debug(`Status: ${status}`);
         return this.statesMap.findIndex((state) => state === status);
     }
 
     async getFaultStatus(): Promise<CharacteristicValue> {
-        this.platform.log!.debug("Requesting installation fault status");
+        this.platform.log.debug("Requesting installation fault status");
         const installationId =
-            this.accessory.context.insallation.installationId;
+            this.accessory.context.installation.installationId;
         const status = await this.platform.prosegurService.getStatus(
             installationId,
         );

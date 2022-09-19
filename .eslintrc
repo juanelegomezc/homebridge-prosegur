@@ -16,13 +16,19 @@
     "quotes": ["warn", "double"],
     "indent": ["warn", 4, { "SwitchCase": 1 }],
     "semi": ["off"],
-    "comma-dangle": ["warn", "always-multiline"],
+    "comma-dangle": ["warn", {
+      "arrays": "always-multiline",
+      "objects": "always-multiline",
+      "imports": "always-multiline",
+      "exports": "always-multiline",
+      "functions": "never"
+    }],
     "dot-notation": "off",
     "eqeqeq": "warn",
     "curly": ["warn", "all"],
     "brace-style": ["warn"],
     "prefer-arrow-callback": ["warn"],
-    "max-len": ["warn", 140],
+    "max-len": ["warn", 200],
     "no-console": ["warn"], // use the provided Homebridge log method instead
     "no-non-null-assertion": ["off"],
     "comma-spacing": ["error"],
