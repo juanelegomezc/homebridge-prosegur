@@ -24,13 +24,13 @@ export class FfmpegProcess {
     private killTimeout?: NodeJS.Timeout;
     readonly stdin: Writable;
 
-    constructor(cameraName: string, sessionId: string, videoProcessor: string, ffmpegArgs: string,
+    constructor(cameraName: string, sessionId: string, videoProcessor: string, ffmpegArgs: string[],
         debug = false, delegate: CameraAccesory, callback?: StreamRequestCallback) {
         delegate.platform.log.debug("Stream command: " + videoProcessor + " " + ffmpegArgs, cameraName, debug);
 
         let started = false;
         const startTime = Date.now();
-        this.process = spawn(videoProcessor, ffmpegArgs.split(/\s+/), { env: process.env });
+        this.process = spawn(videoProcessor, ffmpegArgs, { env: process.env });
         this.stdin = this.process.stdin;
 
         this.process.stdout.on("data", (data) => {

@@ -16,6 +16,7 @@ import {
     StreamRequestTypes,
     StartStreamRequest,
     AudioStreamingCodecType,
+    ReconfiguredVideoInfo,
 } from "homebridge";
 import Container from "typedi";
 
@@ -25,8 +26,9 @@ import { SessionInfo } from "../types/session-info.type";
 
 import pickPort from "pick-port";
 import pathToFfmpeg from "ffmpeg-for-homebridge";
-import { FfmpegProcess } from "../types/ffmpeg-process";
+import { FfmpegProcess } from "../services/ffmpeg-process";
 import { createSocket, Socket } from "dgram";
+import { ResolutionInfo } from "../types/resolution-info.type";
 
 type ActiveSession = {
     mainProcess?: FfmpegProcess;
@@ -143,6 +145,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
         const ipv6 = request.addressVersion === "ipv6";
         const videoReturnPort = await pickPort({
             type: "udp",
+            ip: ipv6 ? "::" : "0.0.0.0",
             reserveTimeout: 15,
         });
 
@@ -174,7 +177,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
         };
 
         if (this.accessory.context.camera.playAudioSupport) {
-            const audio = request.video;
+            const audio = request.audio;
             const audioPort = audio.port;
             const audioReturnPort = await pickPort({
                 type: "udp",
@@ -210,6 +213,33 @@ export class CameraAccesory implements CameraStreamingDelegate {
         callback(undefined, response);
     }
 
+    private determineResolution(request: ReconfiguredVideoInfo): ResolutionInfo {
+        const resInfo: ResolutionInfo = {
+            width: request.width,
+            height: request.height,
+        };
+
+        const filters: Array<string> = [];
+        const noneFilter = filters.indexOf("none");
+        if (noneFilter >= 0) {
+            filters.splice(noneFilter, 1);
+        }
+        resInfo.snapFilter = filters.join(",");
+        if ((noneFilter < 0) && (resInfo.width > 0 || resInfo.height > 0)) {
+            resInfo.resizeFilter = "scale=" + (resInfo.width > 0 ? "'min(" + resInfo.width + ",iw)'" : "iw") + ":" +
+          (resInfo.height > 0 ? "'min(" + resInfo.height + ",ih)'" : "ih") +
+          ":force_original_aspect_ratio=decrease";
+            filters.push(resInfo.resizeFilter);
+            filters.push("scale=trunc(iw/2)*2:trunc(ih/2)*2"); // Force to fit encoder restrictions
+        }
+
+        if (filters.length > 0) {
+            resInfo.videoFilter = filters.join(",");
+        }
+
+        return resInfo;
+    }
+
     private async startStream(
         request: StartStreamRequest,
         callback: StreamRequestCallback
@@ -221,20 +251,12 @@ export class CameraAccesory implements CameraStreamingDelegate {
             this.platform.log.debug(JSON.stringify(sessionInfo));
             const vcodec = "libx264";
             const mtu = 1316;
-            const encoderOptions = "-preset ultrafast -tune zerolatency";
+
+            const encoderOptions = [
+                "-preset ultrafast",
+                "-tune zerolatency",
+            ];
             this.platform.log.debug(
-                "Video stream requested: " +
-                    request.video.width +
-                    " x " +
-                    request.video.height +
-                    ", " +
-                    request.video.fps +
-                    " fps, " +
-                    request.video.max_bit_rate +
-                    " kbps",
-                this.accessory.displayName
-            );
-            this.platform.log.info(
                 "Starting video stream: " +
                     request.video.width +
                     " x " +
@@ -249,75 +271,67 @@ export class CameraAccesory implements CameraStreamingDelegate {
                         : ""),
                 this.accessory.displayName
             );
+            const resolutionInfo = this.determineResolution(request.video);
             const streamUrl = await this.cameraManager.getStreamUrl();
-            let ffmpegArgs = `-i ${streamUrl[0].urls.rtsp}`;
-            ffmpegArgs += // Video
-                " -an -sn -dn" +
-                " -codec:v " +
-                vcodec +
-                " -pix_fmt yuv420p" +
-                " -color_range mpeg" +
-                (request.video.fps > 0 ? " -r " + request.video.fps : "") +
-                " -f rawvideo" +
-                (encoderOptions ? " " + encoderOptions : "") +
-                "" +
-                (" -b:v " + request.video.max_bit_rate + "k") +
-                " -payload_type " +
-                request.video.pt;
+            let ffmpegArgs: string[] = [];
+            ffmpegArgs.push(`-i ${streamUrl[0].urls.rtsp}`);
+            ffmpegArgs.push("-an"); // Skip inclusion of Audio
+            ffmpegArgs.push("-dn"); // Skip inclusion of Data
+            ffmpegArgs.push(`-codec:v ${vcodec}`);
+            ffmpegArgs.push("-pix_fmt yuv420p"); // Sets the pixel format
+            ffmpegArgs.push("-color_range mpeg"); // Color range from the source video
+            ffmpegArgs.push("-rtsp_transport udp"); // Set rtsp transport as UDP
+            if(request.video.fps > 0) {
+                ffmpegArgs.push(`-r ${request.video.fps}`); // Force the frame rate to the requested fps
+            }
+            ffmpegArgs.push("-f rawvideo"); // Force input format
+            if(encoderOptions) {
+                // https://trac.ffmpeg.org/wiki/Encode/H.264#a2.Chooseapresetandtune
+                ffmpegArgs = ffmpegArgs.concat(encoderOptions);
+            }
 
-            ffmpegArgs += // Video Stream
-                " -ssrc " +
-                sessionInfo.videoSSRC +
-                " -f rtp" +
-                " -srtp_out_suite AES_CM_128_HMAC_SHA1_80" +
-                " -srtp_out_params " +
-                sessionInfo.videoSRTP.toString("base64") +
-                " srtp://" +
-                sessionInfo.address +
-                ":" +
-                sessionInfo.videoPort +
-                "?rtcpport=" +
-                sessionInfo.videoPort +
-                "&pkt_size=" +
-                mtu;
+            if(resolutionInfo.videoFilter) {
+                ffmpegArgs.push(`-filter:v ${resolutionInfo.videoFilter}`);
+            }
 
-            if (this.accessory.context.camera.playAudioSupport) {
+            ffmpegArgs.push(`-b:v ${request.video.max_bit_rate}k`);
+            ffmpegArgs.push(`-payload_type ${request.video.pt}`);
+
+            // Video Stream
+            ffmpegArgs.push(`-ssrc ${sessionInfo.videoSSRC}`);
+            ffmpegArgs.push("-f rtp");
+            ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80");
+            ffmpegArgs.push(`-srtp_out_params ${sessionInfo.videoSRTP.toString("base64")}`);
+            ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.videoPort}?rtcpport=${sessionInfo.videoPort}&pkt_size=${mtu}`);
+
+            if (sessionInfo.audioSSRC) {
                 if (
                     request.audio.codec === AudioStreamingCodecType.OPUS ||
                     request.audio.codec === AudioStreamingCodecType.AAC_ELD
                 ) {
-                    ffmpegArgs += // Audio
-                        " -vn -sn -dn" +
-                        (request.audio.codec === AudioStreamingCodecType.OPUS
-                            ? " -codec:a libopus" + " -application lowdelay"
-                            : " -codec:a libfdk_aac" + " -profile:a aac_eld") +
-                        " -flags +global_header" +
-                        " -f null" +
-                        " -ar " +
-                        request.audio.sample_rate +
-                        "k" +
-                        " -b:a " +
-                        request.audio.max_bit_rate +
-                        "k" +
-                        " -ac " +
-                        request.audio.channel +
-                        " -payload_type " +
-                        request.audio.pt;
+                    ffmpegArgs.push("-vn");
+                    ffmpegArgs.push("-sn");
+                    ffmpegArgs.push("-dn");
+                    if(request.audio.codec === AudioStreamingCodecType.OPUS) {
+                        ffmpegArgs.push("-codec:a libopus");
+                        ffmpegArgs.push("-application lowdelay");
+                    } else {
+                        ffmpegArgs.push("-codec:a libfdk_aac");
+                        ffmpegArgs.push(" -profile:a aac_eld");
+                    }
+                    ffmpegArgs.push("-flags +global_header");
+                    ffmpegArgs.push("-f null");
+                    ffmpegArgs.push(`-ar ${request.audio.sample_rate}k`);
+                    ffmpegArgs.push(`-b:a ${request.audio.max_bit_rate}k`);
+                    ffmpegArgs.push(`-ac ${request.audio.channel}`);
+                    ffmpegArgs.push(`-payload_type ${request.audio.pt}`);
 
-                    ffmpegArgs += // Audio Stream
-                        " -ssrc " +
-                        sessionInfo.audioSSRC +
-                        " -f rtp" +
-                        " -srtp_out_suite AES_CM_128_HMAC_SHA1_80" +
-                        " -srtp_out_params " +
-                        sessionInfo.audioSRTP!.toString("base64") +
-                        " srtp://" +
-                        sessionInfo.address +
-                        ":" +
-                        sessionInfo.audioPort +
-                        "?rtcpport=" +
-                        sessionInfo.audioPort +
-                        "&pkt_size=188";
+                    // Audio Stream
+                    ffmpegArgs.push(`-ssrc ${sessionInfo.audioSSRC}`);
+                    ffmpegArgs.push("-f rtp");
+                    ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80");
+                    ffmpegArgs.push(`-srtp_out_params ${sessionInfo.audioSRTP!.toString("base64")}`);
+                    ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.audioPort}?rtcpport=${sessionInfo.audioPort}&pkt_size=188`);
                 } else {
                     this.platform.log.error(
                         "Unsupported audio codec requested: " +
@@ -326,7 +340,8 @@ export class CameraAccesory implements CameraStreamingDelegate {
                     );
                 }
             }
-            ffmpegArgs += " -loglevel level" + "+verbose" + " -progress pipe:1";
+            ffmpegArgs.push("-loglevel level+verbose");
+            ffmpegArgs.push("-progress pipe:1");
             const activeSession: ActiveSession = {};
 
             activeSession.socket = createSocket(
@@ -365,38 +380,6 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 this,
                 callback
             );
-
-            const mic = false; // this.accessory.context.camera.microphoneSupport;
-            if (mic) {
-                const ffmpegReturnArgs =
-                  "-hide_banner" +
-                  " -protocol_whitelist pipe,udp,rtp,file,crypto" +
-                  " -f sdp" +
-                  " -c:a libfdk_aac" +
-                  " -i pipe:" +
-                  " " + streamUrl[0].urls.audioPushHttps +
-                  " -loglevel level" + ("+verbose");
-
-                const ipVer = sessionInfo.ipv6 ? "IP6" : "IP4";
-
-                const sdpReturnAudio =
-                  "v=0\r\n" +
-                  "o=- 0 0 IN " + ipVer + " " + sessionInfo.address + "\r\n" +
-                  "s=Talk\r\n" +
-                  "c=IN " + ipVer + " " + sessionInfo.address + "\r\n" +
-                  "t=0 0\r\n" +
-                  "m=audio " + sessionInfo.audioReturnPort + " RTP/AVP 110\r\n" +
-                  "b=AS:24\r\n" +
-                  "a=rtpmap:110 MPEG4-GENERIC/16000/1\r\n" +
-                  "a=rtcp-mux\r\n" + // FFmpeg ignores this, but might as well
-                  "a=fmtp:110 " +
-                    "profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3; " +
-                    "config=F8F0212C00BC00\r\n" +
-                  "a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:" + sessionInfo.audioSRTP!.toString("base64") + "\r\n";
-                activeSession.returnProcess = new FfmpegProcess(this.accessory.displayName + "] [Two-way", request.sessionID,
-                    pathToFfmpeg!, ffmpegReturnArgs, true, this);
-                activeSession.returnProcess.stdin.end(sdpReturnAudio);
-            }
 
             this.ongoingSessions[request.sessionID] = activeSession;
             delete this.pendingSessions[request.sessionID];
