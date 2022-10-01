@@ -28,34 +28,32 @@ export interface Camera {
 }
 
 interface Installation {
-        installationId: string;
+    installationId: string;
+    description: string;
+    image: number;
+    installationType: string;
+    pinControl: boolean;
+    status: AlarmStatus;
+    preboarding: boolean;
+    hasDomotic: boolean;
+    detectors: {
+        id: string;
         description: string;
-        image: number;
-        installationType: string;
-        pinControl: boolean;
-        status: AlarmStatus;
-        preboarding: boolean;
-        hasDomotic: boolean;
-        detectors: {
-                id: string;
-                description: string;
-                type: string;
-                streaming: boolean;
-        }[];
-        videoDetectors:
-                Camera[];
-        services: {
-                type: string;
-                statusCode: number;
-        }[];
-        partitions: unknown[];
-        domoticDevices: unknown[];
-        accessLevels: unknown[];
-        latitude: string;
-        longitude: string;
-        contractId: string;
-        address: string;
-
+        type: string;
+        streaming: boolean;
+    }[];
+    videoDetectors: Camera[];
+    services: {
+        type: string;
+        statusCode: number;
+    }[];
+    partitions: unknown[];
+    domoticDevices: unknown[];
+    accessLevels: unknown[];
+    latitude: string;
+    longitude: string;
+    contractId: string;
+    address: string;
 }
 
 interface AuthData {
@@ -107,27 +105,27 @@ export interface CameraAuth {
 }
 
 export interface CameraStream {
-    "streamId": {
-        "value": number;
+    streamId: {
+        value: number;
     };
-    "urls": {
-        "rtsp": string;
-        "rtspHttp": string;
-        "rtspHttps": string;
-        "hlsHttp": string;
-        "hlsHttps": string;
-        "multipartHttp": string;
-        "multipartHttps": string;
-        "multipartaudioHttp": string;
-        "multipartaudioHttps": string;
-        "mjpegHttp": string;
-        "mjpegHttps": string;
-        "audioPushHttp": string;
-        "audioPushHttps": string;
+    urls: {
+        rtsp: string;
+        rtspHttp: string;
+        rtspHttps: string;
+        hlsHttp: string;
+        hlsHttps: string;
+        multipartHttp: string;
+        multipartHttps: string;
+        multipartaudioHttp: string;
+        multipartaudioHttps: string;
+        mjpegHttp: string;
+        mjpegHttps: string;
+        audioPushHttp: string;
+        audioPushHttps: string;
     };
 }
 
-export interface AuthResponse extends Response{
+export interface AuthResponse extends Response {
     data: AuthData;
 }
 
@@ -142,4 +140,3 @@ export interface InstallationResponse extends Response {
 export interface CameraResponse extends Response {
     data: CameraAuth;
 }
-

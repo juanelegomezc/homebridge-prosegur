@@ -4,4 +4,4 @@ export type ResolutionInfo = {
     videoFilter?: string;
     snapFilter?: string;
     resizeFilter?: string;
-  };
+};

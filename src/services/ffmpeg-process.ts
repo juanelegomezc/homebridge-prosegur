@@ -11,17 +11,17 @@ import { Writable } from "stream";
 import { CameraAccesory } from "../accesories/camera.accessory";
 
 type FfmpegProgress = {
-  frame: number;
-  fps: number;
-  stream_q: number;
-  bitrate: number;
-  total_size: number;
-  out_time_us: number;
-  out_time: string;
-  dup_frames: number;
-  drop_frames: number;
-  speed: number;
-  progress: string;
+    frame: number;
+    fps: number;
+    stream_q: number;
+    bitrate: number;
+    total_size: number;
+    out_time_us: number;
+    out_time: string;
+    dup_frames: number;
+    drop_frames: number;
+    speed: number;
+    progress: string;
 };
 
 export class FfmpegProcess {
@@ -37,7 +37,10 @@ export class FfmpegProcess {
         delegate: CameraAccesory,
         callback?: StreamRequestCallback
     ) {
-        delegate.platform.log.debug("Stream command: " + videoProcessor + " " + ffmpegArgs, cameraName);
+        delegate.platform.log.debug(
+            "Stream command: " + videoProcessor + " " + ffmpegArgs.join(" "),
+            cameraName
+        );
 
         let started = false;
         const startTime = Date.now();
@@ -50,7 +53,10 @@ export class FfmpegProcess {
                 if (!started && progress.frame > 0) {
                     started = true;
                     const runtime = (Date.now() - startTime) / 1000;
-                    const message = "Getting the first frames took " + runtime + " seconds.";
+                    const message =
+                        "Getting the first frames took " +
+                        runtime +
+                        " seconds.";
                     if (runtime < 5) {
                         delegate.platform.log.debug(message, cameraName);
                     } else if (runtime < 22) {
@@ -70,14 +76,18 @@ export class FfmpegProcess {
                 callback();
                 callback = undefined;
             }
-            if (line.match(/\[(panic|fatal|error)\]/)) { // For now only write anything out when debug is set
+            if (line.match(/\[(panic|fatal|error)\]/)) {
+                // For now only write anything out when debug is set
                 delegate.platform.log.error(line, cameraName);
             } else {
                 delegate.platform.log.debug(line, cameraName, true);
             }
         });
         this.process.on("error", (error: Error) => {
-            delegate.platform.log.error("FFmpeg process creation failed: " + error.message, cameraName);
+            delegate.platform.log.error(
+                "FFmpeg process creation failed: " + error.message,
+                cameraName
+            );
             if (callback) {
                 callback(new Error("FFmpeg process creation failed"));
             }
@@ -88,15 +98,25 @@ export class FfmpegProcess {
                 clearTimeout(this.killTimeout);
             }
 
-            const message = "FFmpeg exited with code: " + code + " and signal: " + signal;
+            const message =
+                "FFmpeg exited with code: " + code + " and signal: " + signal;
 
             if (this.killTimeout && code === 0) {
-                delegate.platform.log.debug(message + " (Expected)", cameraName);
+                delegate.platform.log.debug(
+                    message + " (Expected)",
+                    cameraName
+                );
             } else if (code === null || code === 255) {
                 if (this.process.killed) {
-                    delegate.platform.log.debug(message + " (Forced)", cameraName);
+                    delegate.platform.log.debug(
+                        message + " (Forced)",
+                        cameraName
+                    );
                 } else {
-                    delegate.platform.log.error(message + " (Unexpected)", cameraName);
+                    delegate.platform.log.error(
+                        message + " (Unexpected)",
+                        cameraName
+                    );
                 }
             } else {
                 delegate.platform.log.error(message + " (Error)", cameraName);

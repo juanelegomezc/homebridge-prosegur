@@ -2,6 +2,7 @@ import {
     Service,
     PlatformAccessory,
     CharacteristicValue,
+    Logger,
 } from "homebridge";
 
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
@@ -17,10 +18,13 @@ export class AlarmAccesory {
         AlarmStatus.ALARM, // ALARM_TRIGGERED = 4
     ];
 
+    private log: Logger;
+
     constructor(
         private readonly platform: ProsegurPlatform,
-        private readonly accessory: PlatformAccessory,
+        private readonly accessory: PlatformAccessory
     ) {
+        this.log = this.platform.log;
         this.service =
             this.accessory.getService(this.platform.Service.SecuritySystem) ||
             this.accessory.addService(this.platform.Service.SecuritySystem);
@@ -29,26 +33,26 @@ export class AlarmAccesory {
         this.service
             .setCharacteristic(
                 this.platform.Characteristic.Manufacturer,
-                "Prosegur",
+                "Prosegur"
             )
             .setCharacteristic(
                 this.platform.Characteristic.Name,
-                accessory.displayName,
+                accessory.displayName
             )
             .setCharacteristic(
                 this.platform.Characteristic.SerialNumber,
-                accessory.context.installation.installationId,
+                accessory.context.installation.installationId
             );
 
         this.service
             .getCharacteristic(
-                this.platform.Characteristic.SecuritySystemCurrentState,
+                this.platform.Characteristic.SecuritySystemCurrentState
             )
             .onGet(this.getStatus.bind(this));
 
         this.service
             .getCharacteristic(
-                this.platform.Characteristic.SecuritySystemTargetState,
+                this.platform.Characteristic.SecuritySystemTargetState
             )
             .onSet(this.setStatus.bind(this))
             .onGet(this.getStatus.bind(this));
@@ -59,36 +63,36 @@ export class AlarmAccesory {
     }
 
     async setStatus(value: CharacteristicValue) {
-        this.platform.log.debug(
+        this.log.debug(
             `Setting installation status, value: ${
                 this.statesMap[value as number]
-            }`,
+            }`
         );
         const installationId =
             this.accessory.context.installation.installationId;
         this.platform.prosegurService.setStatus(
             installationId,
-            this.statesMap[value as number],
+            this.statesMap[value as number]
         );
     }
 
     async getStatus(): Promise<CharacteristicValue> {
-        this.platform.log.debug("Requesting installation status");
+        this.log.debug("Requesting installation status");
         const installationId =
             this.accessory.context.installation.installationId;
         const status = await this.platform.prosegurService.getStatus(
-            installationId,
+            installationId
         );
-        this.platform.log.debug(`Status: ${status}`);
+        this.log.debug(`Status: ${status}`);
         return this.statesMap.findIndex((state) => state === status);
     }
 
     async getFaultStatus(): Promise<CharacteristicValue> {
-        this.platform.log.debug("Requesting installation fault status");
+        this.log.debug("Requesting installation fault status");
         const installationId =
             this.accessory.context.installation.installationId;
         const status = await this.platform.prosegurService.getStatus(
-            installationId,
+            installationId
         );
         switch (status) {
             case AlarmStatus.ERROR_ARMED_TOTAL:

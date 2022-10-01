@@ -6,7 +6,8 @@ import { ProsegurService } from "./prosegur.service";
 
 @Service({ transient: true })
 export class CameraManagerService {
-    private readonly CAMERA_MANAGER_WS: string = "https://rest.cameramanager.com/rest/v2.0";
+    private readonly CAMERA_MANAGER_WS: string =
+        "https://rest.cameramanager.com/rest/v2.0";
 
     private readonly MAX_RETRY_COUNT = 3;
 
@@ -65,7 +66,7 @@ export class CameraManagerService {
                 .catch((error) => reject(error));
             setTimeout(() => {
                 this.snapshotPromise = undefined;
-            }, 3 * 1000); // Expire cached snapshot after 3 seconds
+            }, 180 * 1000); // Expire cached snapshot after 180 seconds
         });
         return this.snapshotPromise;
     }
@@ -79,12 +80,19 @@ export class CameraManagerService {
                 "get",
                 `/cameras/${this.cameraId}/streams`
             )
-                .then((response) => resolve(response.map(stream => {
-                    for (const k in stream.urls) {
-                        stream.urls[k] = stream.urls[k] + "&access_token=" + encodeURI(this.token!);
-                    }
-                    return stream;
-                })))
+                .then((response) =>
+                    resolve(
+                        response.map((stream) => {
+                            for (const k in stream.urls) {
+                                stream.urls[k] =
+                                    stream.urls[k] +
+                                    "&access_token=" +
+                                    encodeURI(this.token!);
+                            }
+                            return stream;
+                        })
+                    )
+                )
                 .catch((error) => reject(error));
             setTimeout(() => {
                 this.streamPromise = undefined;

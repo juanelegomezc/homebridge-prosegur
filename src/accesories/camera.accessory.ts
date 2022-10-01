@@ -16,7 +16,8 @@ import {
     StreamRequestTypes,
     StartStreamRequest,
     AudioStreamingCodecType,
-    ReconfiguredVideoInfo,
+    VideoInfo,
+    Logger,
 } from "homebridge";
 import Container from "typedi";
 
@@ -27,15 +28,9 @@ import { SessionInfo } from "../types/session-info.type";
 import pickPort from "pick-port";
 import pathToFfmpeg from "ffmpeg-for-homebridge";
 import { FfmpegProcess } from "../services/ffmpeg-process";
-import { createSocket, Socket } from "dgram";
+import { createSocket } from "dgram";
 import { ResolutionInfo } from "../types/resolution-info.type";
-
-type ActiveSession = {
-    mainProcess?: FfmpegProcess;
-    returnProcess?: FfmpegProcess;
-    timeout?: NodeJS.Timeout;
-    socket?: Socket;
-};
+import { ActiveSession } from "../types/active-session.type";
 
 export class CameraAccesory implements CameraStreamingDelegate {
     public controller?: CameraController;
@@ -45,17 +40,20 @@ export class CameraAccesory implements CameraStreamingDelegate {
     private pendingSessions: StreamSessionIdentifier[] = [];
     private ongoingSessions: ChildProcessWithoutNullStreams[] = [];
 
+    private log: Logger;
+
     constructor(
         public readonly platform: ProsegurPlatform,
         private readonly accessory: PlatformAccessory
     ) {
+        this.log = this.platform.log;
         this.cameraManager.init(
             accessory.context.camera.id,
             this.platform.prosegurService,
-            this.platform.log
+            this.log
         );
         this.accessory.on(PlatformAccessoryEvent.IDENTIFY, () => {
-            this.platform.log.debug("%s identified!", accessory.displayName);
+            this.log.debug("%s identified!", accessory.displayName);
         });
         const options: CameraControllerOptions = {
             cameraStreamCount: 2,
@@ -96,7 +94,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 audio: accessory.context.camera.playAudioSupport
                     ? {
                         twoWayAudio:
-                              accessory.context.camera.microphoneSupport,
+                              false,
                         codecs: [
                             {
                                 type: this.platform.api.hap
@@ -121,14 +119,14 @@ export class CameraAccesory implements CameraStreamingDelegate {
         this.cameraManager
             .getSnapshot(request.width, request.height)
             .then((buffer) => {
-                this.platform.log.debug(
+                this.log.debug(
                     "Snapshot received: " + buffer.byteLength + " bytes total"
                 );
                 return callback(undefined, buffer);
             })
             .catch((error) => {
-                this.platform.log.error("Error receiving snapshot");
-                this.platform.log.error(error);
+                this.log.error("Error receiving snapshot");
+                this.log.error(error);
                 return callback(error, undefined);
             });
     }
@@ -213,22 +211,21 @@ export class CameraAccesory implements CameraStreamingDelegate {
         callback(undefined, response);
     }
 
-    private determineResolution(request: ReconfiguredVideoInfo): ResolutionInfo {
+    private determineResolution(request: VideoInfo): ResolutionInfo {
         const resInfo: ResolutionInfo = {
             width: request.width,
             height: request.height,
         };
 
         const filters: Array<string> = [];
-        const noneFilter = filters.indexOf("none");
-        if (noneFilter >= 0) {
-            filters.splice(noneFilter, 1);
-        }
-        resInfo.snapFilter = filters.join(",");
-        if ((noneFilter < 0) && (resInfo.width > 0 || resInfo.height > 0)) {
-            resInfo.resizeFilter = "scale=" + (resInfo.width > 0 ? "'min(" + resInfo.width + ",iw)'" : "iw") + ":" +
-          (resInfo.height > 0 ? "'min(" + resInfo.height + ",ih)'" : "ih") +
-          ":force_original_aspect_ratio=decrease";
+        if (resInfo.width > 0 || resInfo.height > 0) {
+            resInfo.resizeFilter =
+                `scale=${
+                    resInfo.width > 0 ? `'min(${resInfo.width},iw)'` : "iw"
+                }` +
+                ":" +
+                `${resInfo.height > 0 ? `'min(${resInfo.height},ih)'` : "ih"}` +
+                ":force_original_aspect_ratio=decrease";
             filters.push(resInfo.resizeFilter);
             filters.push("scale=trunc(iw/2)*2:trunc(ih/2)*2"); // Force to fit encoder restrictions
         }
@@ -248,15 +245,17 @@ export class CameraAccesory implements CameraStreamingDelegate {
             this.pendingSessions[request.sessionID];
 
         if (sessionInfo) {
-            this.platform.log.debug(JSON.stringify(sessionInfo));
+            this.log.debug(JSON.stringify(sessionInfo));
             const vcodec = "libx264";
             const encoderOptions = [
-                "-preset ultrafast",
-                "-tune zerolatency",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
             ];
             const mtu = 1316;
 
-            this.platform.log.debug(
+            this.log.debug(
                 "Starting video stream: " +
                     request.video.width +
                     " x " +
@@ -274,33 +273,38 @@ export class CameraAccesory implements CameraStreamingDelegate {
             const resolutionInfo = this.determineResolution(request.video);
             const streamUrl = await this.cameraManager.getStreamUrl();
             let ffmpegArgs: string[] = [];
-            ffmpegArgs.push(`-i ${streamUrl[0].urls.rtsp}`);
+            ffmpegArgs.push("-i", streamUrl[0].urls.rtsp); // Source URL
             ffmpegArgs.push("-an"); // Skip inclusion of Audio
             ffmpegArgs.push("-sn"); // Skip inclusion of Subtitles
             ffmpegArgs.push("-dn"); // Skip inclusion of Data
-            ffmpegArgs.push(`-codec:v ${vcodec}`); // Encode the video to H.264
-            ffmpegArgs.push("-pix_fmt yuv420p"); // Sets the pixel format
-            ffmpegArgs.push("-color_range mpeg"); // Color range from the source video
-            ffmpegArgs.push("-rtsp_transport udp"); // Set rtsp transport as UDP
-            if(request.video.fps > 0) {
-                ffmpegArgs.push(`-r ${request.video.fps}`); // Force the frame rate to the requested fps
+            ffmpegArgs.push("-codec:v", vcodec); // Encode the video to H.264
+            ffmpegArgs.push("-pix_fmt", "yuv420p"); // Sets the pixel format
+            ffmpegArgs.push("-color_range", "mpeg"); // Color range from the source video
+            ffmpegArgs.push("-rtsp_transport", "udp"); // Set rtsp transport as UDP
+            if (request.video.fps > 0) {
+                ffmpegArgs.push("-r", `${request.video.fps}`); // Force the frame rate to the requested fps
             }
-            ffmpegArgs.push("-f rawvideo"); // Force input format
-            ffmpegArgs = ffmpegArgs.concat(encoderOptions);     // https://trac.ffmpeg.org/wiki/Encode/H.264#a2.Chooseapresetandtune
+            ffmpegArgs.push("-f", "rawvideo"); // Force input format
+            ffmpegArgs = ffmpegArgs.concat(encoderOptions); // https://trac.ffmpeg.org/wiki/Encode/H.264#a2.Chooseapresetandtune
 
-            if(resolutionInfo.videoFilter) {
-                ffmpegArgs.push(`-filter:v ${resolutionInfo.videoFilter}`); // Resize video
+            if (resolutionInfo.videoFilter) {
+                ffmpegArgs.push("-filter:v", resolutionInfo.videoFilter); // Resize video
             }
 
-            ffmpegArgs.push(`-b:v ${request.video.max_bit_rate}k`); // Set bitrate
-            ffmpegArgs.push(`-payload_type ${request.video.pt}`); // Set the payload type
+            ffmpegArgs.push("-b:v", `${request.video.max_bit_rate}k`); // Set bitrate
+            ffmpegArgs.push("-payload_type", `${request.video.pt}`); // Set the payload type
 
             // Video Stream
-            ffmpegArgs.push(`-ssrc ${sessionInfo.videoSSRC}`); // Video syncronization source
-            ffmpegArgs.push("-f rtp"); // Force video output format rtp
-            ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80"); // secure rtp
-            ffmpegArgs.push(`-srtp_out_params ${sessionInfo.videoSRTP.toString("base64")}`); // srtp key and salt
-            ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.videoPort}?rtcpport=${sessionInfo.videoPort}&pkt_size=${mtu}`); // video Output url
+            ffmpegArgs.push("-ssrc", `${sessionInfo.videoSSRC}`); // Video syncronization source
+            ffmpegArgs.push("-f", "rtp"); // Force video output format rtp
+            ffmpegArgs.push("-srtp_out_suite", "AES_CM_128_HMAC_SHA1_80"); // secure rtp
+            ffmpegArgs.push(
+                "-srtp_out_params",
+                sessionInfo.videoSRTP.toString("base64")
+            ); // srtp key and salt
+            ffmpegArgs.push(
+                `srtp://${sessionInfo.address}:${sessionInfo.videoPort}?rtcpport=${sessionInfo.videoPort}&pkt_size=${mtu}`
+            ); // video Output url
 
             if (sessionInfo.audioSSRC) {
                 if (
@@ -312,43 +316,51 @@ export class CameraAccesory implements CameraStreamingDelegate {
                     ffmpegArgs.push("-dn"); // Skip the inclusion of data
 
                     // Sets the codec based on requested values
-                    if(request.audio.codec === AudioStreamingCodecType.OPUS) {
-                        ffmpegArgs.push("-codec:a libopus");
-                        ffmpegArgs.push("-application lowdelay");
+                    if (request.audio.codec === AudioStreamingCodecType.OPUS) {
+                        ffmpegArgs.push("-codec:a", "libopus");
+                        ffmpegArgs.push("-application", "lowdelay");
                     } else {
-                        ffmpegArgs.push("-codec:a libfdk_aac");
-                        ffmpegArgs.push(" -profile:a aac_eld");
+                        ffmpegArgs.push("-codec:a", "libfdk_aac");
+                        ffmpegArgs.push("-profile:a", "aac_eld");
                     }
 
-                    ffmpegArgs.push("-flags +global_header"); // Places a global header
-                    ffmpegArgs.push(`-ar ${request.audio.sample_rate}k`); // Set output audio sample rate
-                    ffmpegArgs.push(`-b:a ${request.audio.max_bit_rate}k`); // Set output audio max bit rate
-                    ffmpegArgs.push(`-ac ${request.audio.channel}`); // Set output audio channels
-                    ffmpegArgs.push(`-payload_type ${request.audio.pt}`); // Set output audio payload type
+                    ffmpegArgs.push("-flags", "+global_header"); // Places a global header
+                    ffmpegArgs.push("-ar", `${request.audio.sample_rate}k`); // Set output audio sample rate
+                    ffmpegArgs.push("-b:a", `${request.audio.max_bit_rate}k`); // Set output audio max bit rate
+                    ffmpegArgs.push("-ac", `${request.audio.channel}`); // Set output audio channels
+                    ffmpegArgs.push("-payload_type", `${request.audio.pt}`); // Set output audio payload type
 
                     // Audio Stream
-                    ffmpegArgs.push(`-ssrc ${sessionInfo.audioSSRC}`); // Audio syncronization source
-                    ffmpegArgs.push("-f rtp"); // Force audio output to rtp
-                    ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80"); // Secure rtp
-                    ffmpegArgs.push(`-srtp_out_params ${sessionInfo.audioSRTP!.toString("base64")}`); // srtp key and salt
-                    ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.audioPort}?rtcpport=${sessionInfo.audioPort}&pkt_size=188`); // Audio output URL
+                    ffmpegArgs.push("-ssrc", `${sessionInfo.audioSSRC}`); // Audio syncronization source
+                    ffmpegArgs.push("-f", "rtp"); // Force audio output to rtp
+                    ffmpegArgs.push(
+                        "-srtp_out_suite",
+                        "AES_CM_128_HMAC_SHA1_80"
+                    ); // Secure rtp
+                    ffmpegArgs.push(
+                        "-srtp_out_params",
+                        sessionInfo.audioSRTP!.toString("base64")
+                    ); // srtp key and salt
+                    ffmpegArgs.push(
+                        `srtp://${sessionInfo.address}:${sessionInfo.audioPort}?rtcpport=${sessionInfo.audioPort}&pkt_size=188`
+                    ); // Audio output URL
                 } else {
-                    this.platform.log.error(
+                    this.log.error(
                         "Unsupported audio codec requested: " +
                             request.audio.codec,
                         this.accessory.displayName
                     );
                 }
             }
-            ffmpegArgs.push("-loglevel level+verbose");
-            ffmpegArgs.push("-progress pipe:1");
+            ffmpegArgs.push("-loglevel", "level+verbose");
+            ffmpegArgs.push("-progress", "pipe:1");
             const activeSession: ActiveSession = {};
 
             activeSession.socket = createSocket(
                 sessionInfo.ipv6 ? "udp6" : "udp4"
             );
             activeSession.socket.on("error", (err: Error) => {
-                this.platform.log.error(
+                this.log.error(
                     "Socket error: " + err.message,
                     this.accessory.displayName
                 );
@@ -359,7 +371,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
                     clearTimeout(activeSession.timeout);
                 }
                 activeSession.timeout = setTimeout(() => {
-                    this.platform.log.info(
+                    this.log.info(
                         "Device appears to be inactive. Stopping stream.",
                         this.accessory.displayName
                     );
@@ -383,7 +395,10 @@ export class CameraAccesory implements CameraStreamingDelegate {
             this.ongoingSessions[request.sessionID] = activeSession;
             delete this.pendingSessions[request.sessionID];
         } else {
-            this.platform.log.error("Error finding session information.", this.accessory.displayName);
+            this.log.error(
+                "Error finding session information.",
+                this.accessory.displayName
+            );
             callback(new Error("Error finding session information"));
         }
     }
@@ -398,7 +413,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 break;
             }
             case StreamRequestTypes.RECONFIGURE:
-                this.platform.log.debug(
+                this.log.debug(
                     "Received (unsupported) request to reconfigure to: " +
                         JSON.stringify(request.video)
                 );
@@ -421,7 +436,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
             try {
                 session.socket?.close();
             } catch (err) {
-                this.platform.log.error(
+                this.log.error(
                     "Error occurred closing socket: " + err,
                     this.accessory.displayName
                 );
@@ -429,7 +444,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
             try {
                 session.mainProcess?.stop();
             } catch (err) {
-                this.platform.log.error(
+                this.log.error(
                     "Error occurred terminating main FFmpeg process: " + err,
                     this.accessory.displayName
                 );
@@ -437,16 +452,13 @@ export class CameraAccesory implements CameraStreamingDelegate {
             try {
                 session.returnProcess?.stop();
             } catch (err) {
-                this.platform.log.error(
+                this.log.error(
                     "Error occurred terminating two-way FFmpeg process: " + err,
                     this.accessory.displayName
                 );
             }
         }
         delete this.ongoingSessions[sessionId];
-        this.platform.log.info(
-            "Stopped video stream.",
-            this.accessory.displayName
-        );
+        this.log.info("Stopped video stream.", this.accessory.displayName);
     }
 }

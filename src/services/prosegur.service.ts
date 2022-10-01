@@ -55,7 +55,7 @@ export class ProsegurService {
 
     init(config: PlatformConfig, log: Logger): void {
         this.log = log;
-        if(this.configService.validateConfig(config)) {
+        if (this.configService.validateConfig(config)) {
             this.username = config.username;
             this.password = config.password;
             this.countryCode = config.country;
@@ -68,8 +68,8 @@ export class ProsegurService {
             };
         } else {
             this.log?.error(
-                "Invalid configuration, check configuration options on "
-                + "https://github.com/juanelegomezc/homebridge-prosegur#configuration"
+                "Invalid configuration, check configuration options on " +
+                    "https://github.com/juanelegomezc/homebridge-prosegur#configuration"
             );
         }
     }
@@ -146,9 +146,7 @@ export class ProsegurService {
             );
             const installation = response.data;
             if (installation) {
-                this.log?.debug(
-                    `Installation: ${JSON.stringify(installation)}`
-                );
+                this.log?.debug(`Installation: ${JSON.stringify(installation)}`);
                 return installation.status;
             }
             this.log?.debug("No installation found");
@@ -200,7 +198,9 @@ export class ProsegurService {
                 if (!data) {
                     this.log?.debug("No data ");
                     return Promise.reject(
-                        new Error(`No data for ${method.toUpperCase()}  method call`)
+                        new Error(
+                            `No data for ${method.toUpperCase()}  method call`
+                        )
                     );
                 }
                 request.data = data;
@@ -235,7 +235,11 @@ export class ProsegurService {
                 this.log?.error(
                     `Call to API failed with status ${response.status}: ${response.statusText}`
                 );
-                return Promise.reject(new Error(`Call to API failed with status: ${response.status}`));
+                return Promise.reject(
+                    new Error(
+                        `Call to API failed with status: ${response.status}`
+                    )
+                );
             }
             retry = response.status !== 200;
         } while (retry);
