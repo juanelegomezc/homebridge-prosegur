@@ -17,6 +17,7 @@ import {
     StartStreamRequest,
     AudioStreamingCodecType,
     ReconfiguredVideoInfo,
+    LogLevel,
 } from "homebridge";
 import Container from "typedi";
 
@@ -250,12 +251,12 @@ export class CameraAccesory implements CameraStreamingDelegate {
         if (sessionInfo) {
             this.platform.log.debug(JSON.stringify(sessionInfo));
             const vcodec = "libx264";
-            const mtu = 1316;
-
             const encoderOptions = [
                 "-preset ultrafast",
                 "-tune zerolatency",
             ];
+            const mtu = 1316;
+
             this.platform.log.debug(
                 "Starting video stream: " +
                     request.video.width +
@@ -276,8 +277,9 @@ export class CameraAccesory implements CameraStreamingDelegate {
             let ffmpegArgs: string[] = [];
             ffmpegArgs.push(`-i ${streamUrl[0].urls.rtsp}`);
             ffmpegArgs.push("-an"); // Skip inclusion of Audio
+            ffmpegArgs.push("-sn"); // Skip inclusion of Subtitles
             ffmpegArgs.push("-dn"); // Skip inclusion of Data
-            ffmpegArgs.push(`-codec:v ${vcodec}`);
+            ffmpegArgs.push(`-codec:v ${vcodec}`); // Encode the video to H.264
             ffmpegArgs.push("-pix_fmt yuv420p"); // Sets the pixel format
             ffmpegArgs.push("-color_range mpeg"); // Color range from the source video
             ffmpegArgs.push("-rtsp_transport udp"); // Set rtsp transport as UDP
@@ -285,33 +287,32 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 ffmpegArgs.push(`-r ${request.video.fps}`); // Force the frame rate to the requested fps
             }
             ffmpegArgs.push("-f rawvideo"); // Force input format
-            if(encoderOptions) {
-                // https://trac.ffmpeg.org/wiki/Encode/H.264#a2.Chooseapresetandtune
-                ffmpegArgs = ffmpegArgs.concat(encoderOptions);
-            }
+            ffmpegArgs = ffmpegArgs.concat(encoderOptions);     // https://trac.ffmpeg.org/wiki/Encode/H.264#a2.Chooseapresetandtune
 
             if(resolutionInfo.videoFilter) {
-                ffmpegArgs.push(`-filter:v ${resolutionInfo.videoFilter}`);
+                ffmpegArgs.push(`-filter:v ${resolutionInfo.videoFilter}`); // Resize video
             }
 
-            ffmpegArgs.push(`-b:v ${request.video.max_bit_rate}k`);
-            ffmpegArgs.push(`-payload_type ${request.video.pt}`);
+            ffmpegArgs.push(`-b:v ${request.video.max_bit_rate}k`); // Set bitrate
+            ffmpegArgs.push(`-payload_type ${request.video.pt}`); // Set the payload type
 
             // Video Stream
-            ffmpegArgs.push(`-ssrc ${sessionInfo.videoSSRC}`);
-            ffmpegArgs.push("-f rtp");
-            ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80");
-            ffmpegArgs.push(`-srtp_out_params ${sessionInfo.videoSRTP.toString("base64")}`);
-            ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.videoPort}?rtcpport=${sessionInfo.videoPort}&pkt_size=${mtu}`);
+            ffmpegArgs.push(`-ssrc ${sessionInfo.videoSSRC}`); // Video syncronization source
+            ffmpegArgs.push("-f rtp"); // Force video output format rtp
+            ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80"); // secure rtp
+            ffmpegArgs.push(`-srtp_out_params ${sessionInfo.videoSRTP.toString("base64")}`); // srtp key and salt
+            ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.videoPort}?rtcpport=${sessionInfo.videoPort}&pkt_size=${mtu}`); // video Output url
 
             if (sessionInfo.audioSSRC) {
                 if (
                     request.audio.codec === AudioStreamingCodecType.OPUS ||
                     request.audio.codec === AudioStreamingCodecType.AAC_ELD
                 ) {
-                    ffmpegArgs.push("-vn");
-                    ffmpegArgs.push("-sn");
-                    ffmpegArgs.push("-dn");
+                    ffmpegArgs.push("-vn"); // Skip inclusion of video
+                    ffmpegArgs.push("-sn"); // Skip the inclusion of subtitles
+                    ffmpegArgs.push("-dn"); // Skip the inclusion of data
+
+                    // Sets the codec based on requested values
                     if(request.audio.codec === AudioStreamingCodecType.OPUS) {
                         ffmpegArgs.push("-codec:a libopus");
                         ffmpegArgs.push("-application lowdelay");
@@ -319,19 +320,19 @@ export class CameraAccesory implements CameraStreamingDelegate {
                         ffmpegArgs.push("-codec:a libfdk_aac");
                         ffmpegArgs.push(" -profile:a aac_eld");
                     }
-                    ffmpegArgs.push("-flags +global_header");
-                    ffmpegArgs.push("-f null");
-                    ffmpegArgs.push(`-ar ${request.audio.sample_rate}k`);
-                    ffmpegArgs.push(`-b:a ${request.audio.max_bit_rate}k`);
-                    ffmpegArgs.push(`-ac ${request.audio.channel}`);
-                    ffmpegArgs.push(`-payload_type ${request.audio.pt}`);
+
+                    ffmpegArgs.push("-flags +global_header"); // Places a global header
+                    ffmpegArgs.push(`-ar ${request.audio.sample_rate}k`); // Set output audio sample rate
+                    ffmpegArgs.push(`-b:a ${request.audio.max_bit_rate}k`); // Set output audio max bit rate
+                    ffmpegArgs.push(`-ac ${request.audio.channel}`); // Set output audio channels
+                    ffmpegArgs.push(`-payload_type ${request.audio.pt}`); // Set output audio payload type
 
                     // Audio Stream
-                    ffmpegArgs.push(`-ssrc ${sessionInfo.audioSSRC}`);
-                    ffmpegArgs.push("-f rtp");
-                    ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80");
-                    ffmpegArgs.push(`-srtp_out_params ${sessionInfo.audioSRTP!.toString("base64")}`);
-                    ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.audioPort}?rtcpport=${sessionInfo.audioPort}&pkt_size=188`);
+                    ffmpegArgs.push(`-ssrc ${sessionInfo.audioSSRC}`); // Audio syncronization source
+                    ffmpegArgs.push("-f rtp"); // Force audio output to rtp
+                    ffmpegArgs.push("-srtp_out_suite AES_CM_128_HMAC_SHA1_80"); // Secure rtp
+                    ffmpegArgs.push(`-srtp_out_params ${sessionInfo.audioSRTP!.toString("base64")}`); // srtp key and salt
+                    ffmpegArgs.push(`srtp://${sessionInfo.address}:${sessionInfo.audioPort}?rtcpport=${sessionInfo.audioPort}&pkt_size=188`); // Audio output URL
                 } else {
                     this.platform.log.error(
                         "Unsupported audio codec requested: " +
@@ -376,7 +377,6 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 request.sessionID,
                 pathToFfmpeg!,
                 ffmpegArgs,
-                true,
                 this,
                 callback
             );
