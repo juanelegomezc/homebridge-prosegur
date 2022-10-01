@@ -113,7 +113,7 @@ export class FfmpegProcess {
     parseProgress(data: Uint8Array): FfmpegProgress | undefined {
         const input = data.toString();
 
-        if (input.indexOf("frame=") == 0) {
+        if (input.indexOf("frame=") === 0) {
             try {
                 const progress = new Map<string, string>();
                 input.split(/\r?\n/).forEach((line) => {

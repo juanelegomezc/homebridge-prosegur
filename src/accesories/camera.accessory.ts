@@ -17,7 +17,6 @@ import {
     StartStreamRequest,
     AudioStreamingCodecType,
     ReconfiguredVideoInfo,
-    LogLevel,
 } from "homebridge";
 import Container from "typedi";
 
