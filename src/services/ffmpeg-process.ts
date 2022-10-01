@@ -1,3 +1,8 @@
+/*
+    Based on FfmpegProcess from homebridge-ffmpeg-camera
+    https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/ffmpeg.ts
+*/
+
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import { StreamRequestCallback } from "homebridge";
 import os from "os";
@@ -24,13 +29,19 @@ export class FfmpegProcess {
     private killTimeout?: NodeJS.Timeout;
     readonly stdin: Writable;
 
-    constructor(cameraName: string, sessionId: string, videoProcessor: string, ffmpegArgs: string,
-        debug = false, delegate: CameraAccesory, callback?: StreamRequestCallback) {
-        delegate.platform.log.debug("Stream command: " + videoProcessor + " " + ffmpegArgs, cameraName, debug);
+    constructor(
+        cameraName: string,
+        sessionId: string,
+        videoProcessor: string,
+        ffmpegArgs: string[],
+        delegate: CameraAccesory,
+        callback?: StreamRequestCallback
+    ) {
+        delegate.platform.log.debug("Stream command: " + videoProcessor + " " + ffmpegArgs, cameraName);
 
         let started = false;
         const startTime = Date.now();
-        this.process = spawn(videoProcessor, ffmpegArgs.split(/\s+/), { env: process.env });
+        this.process = spawn(videoProcessor, ffmpegArgs, { env: process.env });
         this.stdin = this.process.stdin;
 
         this.process.stdout.on("data", (data) => {
@@ -41,7 +52,7 @@ export class FfmpegProcess {
                     const runtime = (Date.now() - startTime) / 1000;
                     const message = "Getting the first frames took " + runtime + " seconds.";
                     if (runtime < 5) {
-                        delegate.platform.log.debug(message, cameraName, debug);
+                        delegate.platform.log.debug(message, cameraName);
                     } else if (runtime < 22) {
                         delegate.platform.log.warn(message, cameraName);
                     } else {
@@ -59,9 +70,9 @@ export class FfmpegProcess {
                 callback();
                 callback = undefined;
             }
-            if (debug && line.match(/\[(panic|fatal|error)\]/)) { // For now only write anything out when debug is set
+            if (line.match(/\[(panic|fatal|error)\]/)) { // For now only write anything out when debug is set
                 delegate.platform.log.error(line, cameraName);
-            } else if (debug) {
+            } else {
                 delegate.platform.log.debug(line, cameraName, true);
             }
         });
@@ -80,10 +91,10 @@ export class FfmpegProcess {
             const message = "FFmpeg exited with code: " + code + " and signal: " + signal;
 
             if (this.killTimeout && code === 0) {
-                delegate.platform.log.debug(message + " (Expected)", cameraName, debug);
-            } else if (code == null || code === 255) {
+                delegate.platform.log.debug(message + " (Expected)", cameraName);
+            } else if (code === null || code === 255) {
                 if (this.process.killed) {
-                    delegate.platform.log.debug(message + " (Forced)", cameraName, debug);
+                    delegate.platform.log.debug(message + " (Forced)", cameraName);
                 } else {
                     delegate.platform.log.error(message + " (Unexpected)", cameraName);
                 }
@@ -102,7 +113,7 @@ export class FfmpegProcess {
     parseProgress(data: Uint8Array): FfmpegProgress | undefined {
         const input = data.toString();
 
-        if (input.indexOf("frame=") == 0) {
+        if (input.indexOf("frame=") === 0) {
             try {
                 const progress = new Map<string, string>();
                 input.split(/\r?\n/).forEach((line) => {

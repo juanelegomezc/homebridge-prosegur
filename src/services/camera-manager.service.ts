@@ -1,13 +1,12 @@
 import axios, { AxiosRequestConfig, AxiosResponse, ResponseType } from "axios";
 import { Logger } from "homebridge";
 import { Service } from "typedi";
-import { Camera, CameraStream } from "../types/response.interface";
+import { CameraStream } from "../types/response.interface";
 import { ProsegurService } from "./prosegur.service";
 
 @Service({ transient: true })
 export class CameraManagerService {
-    private readonly CAMERA_MANAGER_WS: string =
-        "https://rest.cameramanager.com/rest/v2.0";
+    private readonly CAMERA_MANAGER_WS: string = "https://rest.cameramanager.com/rest/v2.0";
 
     private readonly MAX_RETRY_COUNT = 3;
 
