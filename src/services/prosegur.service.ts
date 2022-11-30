@@ -80,7 +80,7 @@ export class ProsegurService {
                 user: this.username,
                 password: this.password,
                 language: "en_US",
-                origin: this.country.origin,
+                origin: this.country.webOrigin,
                 platform: "smart2",
                 provider: undefined,
             };
