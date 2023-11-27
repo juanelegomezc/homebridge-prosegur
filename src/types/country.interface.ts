@@ -1,4 +1,4 @@
-export type CountryCode = "CO" | "ES" | "PT";
+export type CountryCode = "CO" | "ES" | "PT" | "AR";
 
 export interface Country {
     origin: string;
