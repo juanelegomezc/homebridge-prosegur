@@ -40,6 +40,11 @@ export class ProsegurService {
                 "https://alarmas.movistarproseguralarmas.es/smart-mv/login.html",
             webOrigin: "WebM",
         },
+        AR: {
+            origin: "https://smart.prosegur.com/smart-individuo",
+            referer: "https://smart.prosegur.com/smart-individuo/login.html",
+            webOrigin: "Web",
+        },
     };
 
     private log?: Logger;
@@ -51,7 +56,7 @@ export class ProsegurService {
         private username: string,
         private password: string,
         private configService: ConfigService
-    ) {}
+    ) { }
 
     init(config: PlatformConfig, log: Logger): void {
         this.log = log;
@@ -69,7 +74,7 @@ export class ProsegurService {
         } else {
             this.log?.error(
                 "Invalid configuration, check configuration options on " +
-                    "https://github.com/juanelegomezc/homebridge-prosegur#configuration"
+                "https://github.com/juanelegomezc/homebridge-prosegur#configuration"
             );
         }
     }
