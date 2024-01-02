@@ -1,6 +1,5 @@
 import "reflect-metadata";
-import axios, { AxiosResponse } from "axios";
-import { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { Service } from "typedi";
 import { AuthRequest } from "../types/auth-request.interface";
 import {
@@ -36,8 +35,7 @@ export class ProsegurService {
         },
         ES: {
             origin: "https://alarmas.movistarproseguralarmas.es",
-            referer:
-                "https://alarmas.movistarproseguralarmas.es/smart-mv/login.html",
+            referer: "https://alarmas.movistarproseguralarmas.es/smart-mv/login.html",
             webOrigin: "WebM",
         },
         AR: {
@@ -68,8 +66,8 @@ export class ProsegurService {
             this.headers = {
                 Accept: "application/json, text/plain, */*",
                 "Content-Type": "application/json;charset=UTF-8",
-                Origin: this.country!.origin,
-                Referer: this.country!.referer,
+                Origin: this.country.origin,
+                Referer: this.country.referer,
             };
         } else {
             this.log?.error(
@@ -107,7 +105,7 @@ export class ProsegurService {
             if (response.status !== 200) {
                 return Promise.reject(new Error("Could not login"));
             }
-            this.headers![this.TOKEN_HEADER] = response.data.data.token;
+            this.headers[this.TOKEN_HEADER] = response.data.data.token;
         } catch (error) {
             this.log?.error(JSON.stringify(error));
             return Promise.reject(error);
@@ -197,6 +195,9 @@ export class ProsegurService {
                 url: `${this.SMART_SERVER_WS}${path}`,
                 method,
                 headers: this.headers,
+                validateStatus: function (status): boolean {
+                    return status < 500;
+                },
             };
 
             if (method === "post" || method === "put") {
@@ -227,7 +228,7 @@ export class ProsegurService {
                 this.log?.error(
                     `Authentication failed with status ${response.status}: ${response.statusText}`
                 );
-                delete this.headers![this.TOKEN_HEADER];
+                delete this.headers[this.TOKEN_HEADER];
                 retryCount++;
             }
 
@@ -254,7 +255,7 @@ export class ProsegurService {
 
     private isLoggedIn(): boolean {
         return (
-            Object.keys(this.headers!).find(
+            Object.keys(this.headers).find(
                 (el) => el === this.TOKEN_HEADER
             ) !== undefined
         );
