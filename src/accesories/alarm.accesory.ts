@@ -26,7 +26,7 @@ export class AlarmAccesory {
     ) {
         this.log = this.platform.log;
         this.service =
-            this.accessory.getService(this.platform.Service.SecuritySystem) ||
+            this.accessory.getService(this.platform.Service.SecuritySystem) ??
             this.accessory.addService(this.platform.Service.SecuritySystem);
 
         // set accessory information
@@ -64,8 +64,7 @@ export class AlarmAccesory {
 
     async setStatus(value: CharacteristicValue) {
         this.log.debug(
-            `Setting installation status, value: ${
-                this.statesMap[value as number]
+            `Setting installation status, value: ${this.statesMap[value as number]
             }`
         );
         const installationId =

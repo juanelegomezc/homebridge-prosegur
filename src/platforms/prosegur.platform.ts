@@ -22,8 +22,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
 
     public readonly accessories: PlatformAccessory[] = [];
 
-    public readonly prosegurService: ProsegurService =
-        Container.get(ProsegurService);
+    public readonly prosegurService: ProsegurService = Container.get(ProsegurService);
 
     constructor(
         public readonly log: Logger,
@@ -37,7 +36,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
         });
     }
 
-    configureAccessory(accessory: PlatformAccessory) {
+    configureAccessory(accessory: PlatformAccessory): void {
         this.log.info("Loading accessory from cache:", accessory.displayName);
         this.accessories.push(accessory);
     }
@@ -126,7 +125,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
             if (newAccesories.length > 0) {
                 this.log.info(
                     "Register new accesories:" +
-                        newAccesories.map((item) => item.displayName)
+                    newAccesories.map((item) => item.displayName)
                 );
                 this.api.registerPlatformAccessories(
                     PLUGIN_NAME,
@@ -138,7 +137,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
             if (existingAccessories.length > 0) {
                 this.log.info(
                     "Register existing accesories:" +
-                        existingAccessories.map((item) => item.displayName)
+                    existingAccessories.map((item) => item.displayName)
                 );
                 this.api.updatePlatformAccessories(existingAccessories);
             }
@@ -164,7 +163,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
             if (removedAccesories.length > 0) {
                 this.log.info(
                     "Removing accesories:" +
-                        removedAccesories.map((item) => item.displayName)
+                    removedAccesories.map((item) => item.displayName)
                 );
                 this.api.unregisterPlatformAccessories(
                     PLUGIN_NAME,

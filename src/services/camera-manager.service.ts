@@ -20,7 +20,7 @@ export class CameraManagerService {
         private cameraId: string,
         private snapshotPromise: Promise<Buffer> | undefined,
         private streamPromise: Promise<CameraStream[]> | undefined
-    ) {}
+    ) { }
 
     init(
         prosegurCameraId: string,
@@ -36,7 +36,7 @@ export class CameraManagerService {
     async login(): Promise<void> {
         try {
             const response = await this.prosegur.loginCameraManager(
-                this.prosegurCameraId!
+                this.prosegurCameraId
             );
             this.token = response.data.accessToken;
             this.cameraId = response.data.code;

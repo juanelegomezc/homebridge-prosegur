@@ -76,7 +76,7 @@ export class FfmpegProcess {
                 callback();
                 callback = undefined;
             }
-            if (line.match(/\[(panic|fatal|error)\]/)) {
+            if (RegExp(/\[(panic|fatal|error)\]/).exec(line)) {
                 // For now only write anything out when debug is set
                 delegate.platform.log.error(line, cameraName);
             } else {
@@ -133,7 +133,7 @@ export class FfmpegProcess {
     parseProgress(data: Uint8Array): FfmpegProgress | undefined {
         const input = data.toString();
 
-        if (input.indexOf("frame=") === 0) {
+        if (input.startsWith("frame=")) {
             try {
                 const progress = new Map<string, string>();
                 input.split(/\r?\n/).forEach((line) => {

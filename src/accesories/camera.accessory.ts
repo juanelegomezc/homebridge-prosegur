@@ -94,14 +94,14 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 audio: accessory.context.camera.playAudioSupport
                     ? {
                         twoWayAudio:
-                              false,
+                            false,
                         codecs: [
                             {
                                 type: this.platform.api.hap
                                     .AudioStreamingCodecType.AAC_ELD,
                                 samplerate:
-                                      this.platform.api.hap
-                                          .AudioStreamingSamplerate.KHZ_16,
+                                    this.platform.api.hap
+                                        .AudioStreamingSamplerate.KHZ_16,
                             },
                         ],
                     }
@@ -220,11 +220,11 @@ export class CameraAccesory implements CameraStreamingDelegate {
         const filters: Array<string> = [];
         if (resInfo.width > 0 || resInfo.height > 0) {
             resInfo.resizeFilter =
-                `scale=${
-                    resInfo.width > 0 ? `'min(${resInfo.width},iw)'` : "iw"
+                `scale=${resInfo.width > 0 ? `'min(${resInfo.width},iw)'` : "iw"
                 }` +
                 ":" +
-                `${resInfo.height > 0 ? `'min(${resInfo.height},ih)'` : "ih"}` +
+                `${resInfo.height > 0 ? `'min(${resInfo.height},ih)'` : "ih"
+                }` +
                 ":force_original_aspect_ratio=decrease";
             filters.push(resInfo.resizeFilter);
             filters.push("scale=trunc(iw/2)*2:trunc(ih/2)*2"); // Force to fit encoder restrictions
@@ -257,17 +257,17 @@ export class CameraAccesory implements CameraStreamingDelegate {
 
             this.log.debug(
                 "Starting video stream: " +
-                    request.video.width +
-                    " x " +
-                    request.video.height +
-                    ", " +
-                    request.video.fps +
-                    " fps, " +
-                    request.video.max_bit_rate +
-                    " kbps" +
-                    (this.accessory.context.camera.playAudioSupport
-                        ? " (" + request.audio.codec + ")"
-                        : ""),
+                request.video.width +
+                " x " +
+                request.video.height +
+                ", " +
+                request.video.fps +
+                " fps, " +
+                request.video.max_bit_rate +
+                " kbps" +
+                (this.accessory.context.camera.playAudioSupport
+                    ? " (" + request.audio.codec + ")"
+                    : ""),
                 this.accessory.displayName
             );
             const resolutionInfo = this.determineResolution(request.video);
@@ -347,7 +347,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
                 } else {
                     this.log.error(
                         "Unsupported audio codec requested: " +
-                            request.audio.codec,
+                        request.audio.codec,
                         this.accessory.displayName
                     );
                 }
@@ -415,7 +415,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
             case StreamRequestTypes.RECONFIGURE:
                 this.log.debug(
                     "Received (unsupported) request to reconfigure to: " +
-                        JSON.stringify(request.video)
+                    JSON.stringify(request.video)
                 );
                 callback();
                 break;
