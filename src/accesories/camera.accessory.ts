@@ -1,4 +1,3 @@
-import { ChildProcessWithoutNullStreams } from "child_process";
 import {
     PlatformAccessory,
     CameraStreamingDelegate,
@@ -23,22 +22,22 @@ import Container from "typedi";
 
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
 import { CameraManagerService } from "../services/camera-manager.service";
-import { SessionInfo } from "../types/session-info.type";
+import { CameraSessionInfo } from "../types/camera-session-info.type";
 
 import pickPort from "pick-port";
 import pathToFfmpeg from "ffmpeg-for-homebridge";
 import { FfmpegProcess } from "../services/ffmpeg-process";
 import { createSocket } from "dgram";
-import { ResolutionInfo } from "../types/resolution-info.type";
-import { ActiveSession } from "../types/active-session.type";
+import { CameraResolutionInfo } from "../types/camera-resolution-info.type";
+import { CameraActiveSession } from "../types/camera-active-session.type";
 
 export class CameraAccesory implements CameraStreamingDelegate {
     public controller?: CameraController;
     private cameraManager: CameraManagerService =
         Container.get(CameraManagerService);
 
-    private pendingSessions: StreamSessionIdentifier[] = [];
-    private ongoingSessions: ChildProcessWithoutNullStreams[] = [];
+    private pendingSessions: Record<string, CameraSessionInfo> = {};
+    private ongoingSessions: Record<string, CameraActiveSession> = {};
 
     private log: Logger;
 
@@ -154,7 +153,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
         const videoSSRC =
             this.platform.api.hap.CameraController.generateSynchronisationSource();
 
-        const sessionInfo: SessionInfo = {
+        const sessionInfo: CameraSessionInfo = {
             address: targetAddress,
             ipv6,
             videoPort,
@@ -211,8 +210,8 @@ export class CameraAccesory implements CameraStreamingDelegate {
         callback(undefined, response);
     }
 
-    private determineResolution(request: VideoInfo): ResolutionInfo {
-        const resInfo: ResolutionInfo = {
+    private determineResolution(request: VideoInfo): CameraResolutionInfo {
+        const resInfo: CameraResolutionInfo = {
             width: request.width,
             height: request.height,
         };
@@ -241,7 +240,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
         request: StartStreamRequest,
         callback: StreamRequestCallback
     ): Promise<void> {
-        const sessionInfo: SessionInfo =
+        const sessionInfo: CameraSessionInfo =
             this.pendingSessions[request.sessionID];
 
         if (sessionInfo) {
@@ -354,7 +353,7 @@ export class CameraAccesory implements CameraStreamingDelegate {
             }
             ffmpegArgs.push("-loglevel", "level+verbose");
             ffmpegArgs.push("-progress", "pipe:1");
-            const activeSession: ActiveSession = {};
+            const activeSession: CameraActiveSession = {};
 
             activeSession.socket = createSocket(
                 sessionInfo.ipv6 ? "udp6" : "udp4"

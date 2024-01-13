@@ -1,6 +1,6 @@
-import { AlarmStatus } from "./alarm-status.enum";
+import { ProsegurAlarmStatus } from "./prosegur-alarm-status.enum";
 
-export interface Camera {
+export interface ProsegurCamera {
     id: string;
     description: string;
     type: string;
@@ -27,13 +27,13 @@ export interface Camera {
     modePrivateStatus: boolean;
 }
 
-interface Installation {
+export interface ProsegurInstallation {
     installationId: string;
     description: string;
     image: number;
     installationType: string;
     pinControl: boolean;
-    status: AlarmStatus;
+    status: ProsegurAlarmStatus;
     preboarding: boolean;
     hasDomotic: boolean;
     detectors: {
@@ -42,7 +42,7 @@ interface Installation {
         type: string;
         streaming: boolean;
     }[];
-    videoDetectors: Camera[];
+    videoDetectors: ProsegurCamera[];
     services: {
         type: string;
         statusCode: number;
@@ -56,7 +56,7 @@ interface Installation {
     address: string;
 }
 
-interface AuthData {
+interface ProsegurAuthData {
     token: string;
     username: string;
     name: string;
@@ -87,7 +87,7 @@ interface AuthData {
     showOnboarding: boolean;
 }
 
-export interface Response {
+export interface ProsegurResponse {
     result: {
         code: number;
         message: string;
@@ -95,7 +95,7 @@ export interface Response {
     };
 }
 
-export interface CameraAuth {
+export interface ProsegurCameraAuth {
     accessToken: string;
     sessionId: string;
     userId: string;
@@ -104,7 +104,7 @@ export interface CameraAuth {
     obfuscated: boolean;
 }
 
-export interface CameraStream {
+export interface ProsegurCameraStream {
     streamId: {
         value: number;
     };
@@ -125,18 +125,18 @@ export interface CameraStream {
     };
 }
 
-export interface AuthResponse extends Response {
-    data: AuthData;
+export interface ProsegurAuthResponse extends ProsegurResponse {
+    data: ProsegurAuthData;
 }
 
-export interface InstallationsResponse extends Response {
-    data: Installation[];
+export interface ProsegurInstallationsResponse extends ProsegurResponse {
+    data: ProsegurInstallation[];
 }
 
-export interface InstallationResponse extends Response {
-    data: Installation;
+export interface ProsegurInstallationResponse extends ProsegurResponse {
+    data: ProsegurInstallation;
 }
 
-export interface CameraResponse extends Response {
-    data: CameraAuth;
+export interface ProsegurCameraResponse extends ProsegurResponse {
+    data: ProsegurCameraAuth;
 }

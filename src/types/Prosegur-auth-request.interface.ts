@@ -1,4 +1,4 @@
-export interface AuthRequest {
+export interface ProsegurAuthRequest {
     user: string;
     password: string;
     language: string;

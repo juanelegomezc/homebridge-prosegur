@@ -23,6 +23,7 @@ export class ConfigService {
                     case "CO":
                     case "ES":
                     case "PT":
+                    case "AR":
                         return true;
                     default:
                         return false;

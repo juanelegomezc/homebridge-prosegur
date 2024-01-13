@@ -1,4 +1,4 @@
-export type ResolutionInfo = {
+export type CameraResolutionInfo = {
     width: number;
     height: number;
     videoFilter?: string;
