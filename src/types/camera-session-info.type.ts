@@ -1,6 +1,6 @@
 import { SRTPCryptoSuites } from "homebridge";
 
-export type SessionInfo = {
+export type CameraSessionInfo = {
     address: string;
     ipv6: boolean;
 

@@ -1,4 +1,4 @@
-export enum AlarmStatus {
+export enum ProsegurAlarmStatus {
     ALARM = "LE",
     ARMED = "AT",
     DISARMED = "DA",

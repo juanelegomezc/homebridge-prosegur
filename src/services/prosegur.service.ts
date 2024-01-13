@@ -1,17 +1,17 @@
 import "reflect-metadata";
-import axios, { AxiosResponse, AxiosRequestConfig, AxiosRequestHeaders } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosRequestHeaders, AxiosError } from "axios";
 import { Service } from "typedi";
-import { AuthRequest } from "../types/auth-request.interface";
+import { ProsegurAuthRequest } from "../types/Prosegur-auth-request.interface";
 import {
-    AuthResponse,
-    InstallationsResponse,
-    Response,
-    InstallationResponse,
-    CameraResponse,
-} from "../types/response.interface";
-import { Country, CountryCode } from "../types/country.interface";
+    ProsegurAuthResponse,
+    ProsegurInstallationsResponse,
+    ProsegurResponse,
+    ProsegurInstallationResponse,
+    ProsegurCameraResponse,
+} from "../types/prosegur-response.interface";
+import { ProsegurCountry, ProsegurCountryCode } from "../types/prosegur-country.interface";
 import { Logger, PlatformConfig } from "homebridge";
-import { AlarmStatus } from "../types/alarm-status.enum";
+import { ProsegurAlarmStatus } from "../types/prosegur-alarm-status.enum";
 import { ConfigService } from "./config.service";
 
 @Service({ transient: true })
@@ -22,7 +22,7 @@ export class ProsegurService {
     private readonly MAX_RETRIES_COUNT = 3;
     private readonly TOKEN_HEADER = "X-Smart-Token";
 
-    private readonly COUNTRIES: Record<CountryCode, Country> = {
+    private readonly COUNTRIES: Record<ProsegurCountryCode, ProsegurCountry> = {
         CO: {
             origin: "https://smart.prosegur.com/smart-individuo",
             referer: "https://smart.prosegur.com/smart-individuo/login.html",
@@ -48,7 +48,7 @@ export class ProsegurService {
     private log?: Logger;
 
     constructor(
-        private country: Country,
+        private country: ProsegurCountry,
         private headers: AxiosRequestHeaders,
         private countryCode: string,
         private username: string,
@@ -79,7 +79,7 @@ export class ProsegurService {
 
     async login(): Promise<void> {
         try {
-            const request: AuthRequest = {
+            const request: ProsegurAuthRequest = {
                 user: this.username,
                 password: this.password,
                 language: "en_US",
@@ -95,16 +95,12 @@ export class ProsegurService {
             const requestConfig: AxiosRequestConfig = {
                 headers: this.headers,
             };
-            const response = await axios.post<AuthResponse>(
+            const response = await axios.post<ProsegurAuthResponse>(
                 `${this.SMART_SERVER_WS}/access/login`,
                 request,
                 requestConfig
             );
             this.log?.debug(`Response ${JSON.stringify(response.data)}`);
-
-            if (response.status !== 200) {
-                return Promise.reject(new Error("Could not login"));
-            }
             this.headers[this.TOKEN_HEADER] = response.data.data.token;
         } catch (error) {
             this.log?.error(JSON.stringify(error));
@@ -112,9 +108,9 @@ export class ProsegurService {
         }
     }
 
-    async getInstallations(): Promise<InstallationsResponse> {
+    async getInstallations(): Promise<ProsegurInstallationsResponse> {
         try {
-            const installations = await this.request<InstallationsResponse>(
+            const installations = await this.request<ProsegurInstallationsResponse>(
                 "get",
                 "/installation"
             );
@@ -126,7 +122,7 @@ export class ProsegurService {
 
     async setStatus(
         installationId: string,
-        status: AlarmStatus
+        status: ProsegurAlarmStatus
     ): Promise<boolean> {
         try {
             const data = { statusCode: status };
@@ -141,9 +137,9 @@ export class ProsegurService {
         }
     }
 
-    async getStatus(installationId: string): Promise<AlarmStatus> {
+    async getStatus(installationId: string): Promise<ProsegurAlarmStatus> {
         try {
-            const response = await this.request<InstallationResponse>(
+            const response = await this.request<ProsegurInstallationResponse>(
                 "get",
                 `/installation/${installationId}`
             );
@@ -153,33 +149,36 @@ export class ProsegurService {
                 return installation.status;
             }
             this.log?.debug("No installation found");
-            return AlarmStatus.DISARMED;
+            return ProsegurAlarmStatus.DISARMED;
         } catch (error) {
             this.log?.debug("Error fetching installation information");
-            return AlarmStatus.GENERAL_ERROR;
+            return ProsegurAlarmStatus.GENERAL_ERROR;
         }
     }
 
-    loginCameraManager(cameraId: string): Promise<CameraResponse> {
-        return this.request<CameraResponse>(
+    loginCameraManager(cameraId: string): Promise<ProsegurCameraResponse> {
+        return this.request<ProsegurCameraResponse>(
             "get",
             `/video2/camera/${cameraId}/play/`
         );
     }
 
-    private async request<T extends Response>(
+    private async request<T extends ProsegurResponse>(
         method: string,
         path: string,
         data?: Record<string, unknown>,
         retry = true
     ): Promise<T> {
-        this.log?.debug(
-            `Requesting ${path}, method: ${method.toUpperCase()}, data: ${JSON.stringify(
+        let logInfo = `Request ${method.toUpperCase()} ${path}`;
+        if (data) {
+            logInfo += `, data: ${JSON.stringify(
                 data
-            )}`
-        );
+            )}`;
+        }
+        this.log?.debug(logInfo);
         let retryCount = 0;
         let response: AxiosResponse<T>;
+
         do {
             if (!this.isLoggedIn()) {
                 this.log?.debug("No X-Smart-Token, attempting login");
@@ -195,12 +194,9 @@ export class ProsegurService {
                 url: `${this.SMART_SERVER_WS}${path}`,
                 method,
                 headers: this.headers,
-                validateStatus: function (status): boolean {
-                    return status < 500;
-                },
             };
 
-            if (method === "post" || method === "put") {
+            if (method.toLowerCase() === "post" || method.toLowerCase() === "put") {
                 if (!data) {
                     this.log?.debug("No data ");
                     return Promise.reject(
@@ -214,43 +210,37 @@ export class ProsegurService {
 
             try {
                 response = await axios.request<T>(request);
+                this.log?.debug(`Response: ${JSON.stringify(response.data)}`);
+                return response.data;
             } catch (error) {
-                this.log?.error((error as Error).message);
-                return Promise.reject(error);
-            }
-
-            if (response.status >= 500 && response.status < 600) {
-                this.log?.error(
-                    `Connection failed with status ${response.status}: ${response.statusText}`
-                );
-                retryCount++;
-            } else if (response.status >= 400 && response.status < 500) {
-                this.log?.error(
-                    `Authentication failed with status ${response.status}: ${response.statusText}`
-                );
-                delete this.headers[this.TOKEN_HEADER];
-                retryCount++;
+                if (error instanceof AxiosError) {
+                    retry = true;
+                    if (error.response) {
+                        if (error.response.status >= 400 && error.response.status < 500) {
+                            this.log?.error(
+                                `Authentication failed with status ${error.response.status}: ${error.response.statusText}`
+                            );
+                            delete this.headers[this.TOKEN_HEADER];
+                        } else {
+                            this.log?.error(
+                                `Connection failed with status ${error.response.status}: ${error.response.statusText}`
+                            );
+                            retryCount++;
+                        }
+                    }
+                } else {
+                    this.log?.error((error as Error).message);
+                    return Promise.reject(error);
+                }
             }
 
             if (!retry || retryCount > this.MAX_RETRIES_COUNT) {
                 this.log?.error("Max retries exceded");
                 return Promise.reject(new Error("Connection error"));
             }
-
-            if (response.status !== 200) {
-                this.log?.error(
-                    `Call to API failed with status ${response.status}: ${response.statusText}`
-                );
-                return Promise.reject(
-                    new Error(
-                        `Call to API failed with status: ${response.status}`
-                    )
-                );
-            }
-            retry = response.status !== 200;
         } while (retry);
-        this.log?.debug(`Response: ${JSON.stringify(response.data)}`);
-        return response.data;
+
+        return Promise.reject(new Error("Connection error"));
     }
 
     private isLoggedIn(): boolean {
@@ -261,7 +251,7 @@ export class ProsegurService {
         );
     }
 
-    private cleanRequestPassword(request: AuthRequest): AuthRequest {
+    private cleanRequestPassword(request: ProsegurAuthRequest): ProsegurAuthRequest {
         const newReq = { ...request };
         newReq.password = "*****";
         return newReq;

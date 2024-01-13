@@ -26,6 +26,12 @@
         "required": true,
         "oneOf": [
           {
+            "title": "Argentina",
+            "enum": [
+              "AR"
+            ]
+          },
+          {
             "title": "Colombia",
             "enum": [
               "CO"
@@ -42,14 +48,12 @@
             "enum": [
               "ES"
             ]
-          },
-          {
-            "title": "Argentina",
-            "enum": [
-              "AR"
-            ]
           }
         ]
+      },
+      "enableVideoCamera": {
+        "title": "Enable Video Camera",
+        "type": "boolean"
       }
     }
   }

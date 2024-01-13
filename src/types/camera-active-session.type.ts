@@ -1,7 +1,7 @@
 import { Socket } from "dgram";
 import { FfmpegProcess } from "../services/ffmpeg-process";
 
-export type ActiveSession = {
+export type CameraActiveSession = {
     mainProcess?: FfmpegProcess;
     returnProcess?: FfmpegProcess;
     timeout?: NodeJS.Timeout;

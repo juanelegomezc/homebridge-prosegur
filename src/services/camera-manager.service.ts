@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse, ResponseType } from "axios";
 import { Logger } from "homebridge";
 import { Service } from "typedi";
-import { CameraStream } from "../types/response.interface";
+import { ProsegurCameraStream } from "../types/prosegur-response.interface";
 import { ProsegurService } from "./prosegur.service";
 
 @Service({ transient: true })
@@ -19,7 +19,7 @@ export class CameraManagerService {
         private token: string | undefined,
         private cameraId: string,
         private snapshotPromise: Promise<Buffer> | undefined,
-        private streamPromise: Promise<CameraStream[]> | undefined
+        private streamPromise: Promise<ProsegurCameraStream[]> | undefined
     ) { }
 
     init(
@@ -71,12 +71,12 @@ export class CameraManagerService {
         return this.snapshotPromise;
     }
 
-    getStreamUrl(): Promise<CameraStream[]> {
+    getStreamUrl(): Promise<ProsegurCameraStream[]> {
         if (this.streamPromise) {
             return this.streamPromise;
         }
         return new Promise((resolve, reject) => {
-            this.request<CameraStream[]>(
+            this.request<ProsegurCameraStream[]>(
                 "get",
                 `/cameras/${this.cameraId}/streams`
             )
@@ -111,11 +111,13 @@ export class CameraManagerService {
         retry = true,
         responseType?: ResponseType | undefined
     ): Promise<T> {
-        this.log?.debug(
-            `Requesting ${path}, method: ${method.toUpperCase()}, data: ${JSON.stringify(
+        let logInfo = `Request ${method.toUpperCase()} ${path}`;
+        if (data) {
+            logInfo += `, data: ${JSON.stringify(
                 data
-            )}`
-        );
+            )}`;
+        }
+        this.log?.debug(logInfo);
         let retryCount = 0;
         let response: AxiosResponse<T>;
         do {

@@ -10,10 +10,11 @@ import {
 } from "homebridge";
 
 import { PLATFORM_NAME, PLUGIN_NAME } from "../settings";
-import { AlarmAccesory } from "../accesories/alarm.accesory";
 import { Container } from "typedi";
 import { ProsegurService } from "../services/prosegur.service";
+import { ProsegurInstallation } from "../types/prosegur-response.interface";
 import { CameraAccesory } from "../accesories/camera.accessory";
+import { AlarmAccesory } from "../accesories/alarm.accesory";
 
 export class ProsegurPlatform implements DynamicPlatformPlugin {
     public readonly Service: typeof Service = this.api.hap.Service;
@@ -50,77 +51,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
             const existingAccessories: PlatformAccessory[] = [];
 
             for (const installation of installationResponse.data) {
-                const uuid = this.api.hap.uuid.generate(
-                    installation.installationId
-                );
-
-                // see if an accessory with the same uuid has already been registered and restored from the cached devices
-                const existingInstallation = this.accessories.find(
-                    (accessory) => accessory.UUID === uuid
-                );
-
-                if (existingInstallation) {
-                    // the installation already exists
-                    this.log.info(
-                        "Restoring existing installation from cache:",
-                        existingInstallation.displayName
-                    );
-
-                    existingInstallation.context.installation = installation;
-                    existingAccessories.push(existingInstallation);
-                    new AlarmAccesory(this, existingInstallation);
-                } else {
-                    // the installation does not exist, so we need to create it
-                    this.log.info(
-                        "Adding new installation:",
-                        installation.description
-                    );
-                    const accessory = new this.api.platformAccessory(
-                        installation.description,
-                        uuid
-                    );
-                    accessory.context.installation = installation;
-                    new AlarmAccesory(this, accessory);
-
-                    newAccesories.push(accessory);
-                }
-                if (installation.videoDetectors.length > 0) {
-                    this.log.info("Installation has cameras available");
-                    installation.videoDetectors.forEach((camera) => {
-                        this.log.info(`${JSON.stringify(camera)}`);
-                        const uuid = this.api.hap.uuid.generate(`${camera.id}`);
-                        // see if an accessory with the same uuid has already been registered and restored from the cached devices
-                        const existingCamera = this.accessories.find(
-                            (accessory) => accessory.UUID === uuid
-                        );
-
-                        if (existingCamera) {
-                            // the camera already exists
-                            this.log.info(
-                                "Restoring existing camera from cache:",
-                                existingCamera.displayName
-                            );
-
-                            existingCamera.context.camera = camera;
-                            existingAccessories.push(existingCamera);
-                            new CameraAccesory(this, existingCamera);
-                        } else {
-                            // the camera does not exist, so we need to create it
-                            this.log.info(
-                                "Adding new camera:",
-                                camera.description
-                            );
-                            const accessory = new this.api.platformAccessory(
-                                camera.description,
-                                uuid
-                            );
-                            accessory.context.camera = camera;
-                            new CameraAccesory(this, accessory);
-
-                            newAccesories.push(accessory);
-                        }
-                    });
-                }
+                this.checkInstallation(installation, newAccesories, existingAccessories);
             }
             if (newAccesories.length > 0) {
                 this.log.info(
@@ -142,43 +73,129 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
                 this.api.updatePlatformAccessories(existingAccessories);
             }
 
-            const removedAccesories: PlatformAccessory[] =
-                this.accessories.filter((existing) =>
-                    installationResponse.data.find((installation) => {
-                        if (existing.context.installation) {
-                            return (
-                                installation.installationId ===
-                                existing.context.installation.installationId
-                            );
-                        } else if (existing.context.camera) {
-                            return installation.videoDetectors.find(
-                                (camera) =>
-                                    camera.id === existing.context.camera.id
-                            );
-                        }
-                    })
-                        ? false
-                        : existing
-                );
-            if (removedAccesories.length > 0) {
-                this.log.info(
-                    "Removing accesories:" +
-                    removedAccesories.map((item) => item.displayName)
-                );
-                this.api.unregisterPlatformAccessories(
-                    PLUGIN_NAME,
-                    PLATFORM_NAME,
-                    removedAccesories
-                );
-            }
+            this.checkRemovedAccesories(installationResponse.data);
         } catch (error) {
             this.log.error("Error initializing accesories");
             if (error instanceof Error) {
                 this.log.error(error.message);
                 if (error.stack) {
-                    this.log.error(error.stack!);
+                    this.log.error(error.stack);
                 }
             }
+        }
+    }
+
+    checkInstallation(installation: ProsegurInstallation, newAccesories: PlatformAccessory[], existingAccessories: PlatformAccessory[]): void {
+        const uuid = this.api.hap.uuid.generate(
+            installation.installationId
+        );
+
+        // see if an accessory with the same uuid has already been registered and restored from the cached devices
+        const existingInstallation = this.accessories.find(
+            (accessory) => accessory.UUID === uuid
+        );
+
+        let accessory: PlatformAccessory | undefined;
+        if (existingInstallation) {
+            // the installation already exists
+            this.log.info(
+                "Restoring existing installation from cache:",
+                existingInstallation.displayName
+            );
+
+            existingInstallation.context.installation = installation;
+            existingAccessories.push(existingInstallation);
+            accessory = existingInstallation;
+        } else {
+            // the installation does not exist, so we need to create it
+            this.log.info(
+                "Adding new installation:",
+                installation.description
+            );
+            accessory = new this.api.platformAccessory(
+                installation.description,
+                uuid
+            );
+            accessory.context.installation = installation;
+            newAccesories.push(accessory);
+        }
+
+        try {
+            new AlarmAccesory(this, accessory);
+        } catch (e) {/* ... */ }
+
+        if (this.config.enableVideoCamera && installation.videoDetectors.length > 0) {
+            this.log.info("Installation has cameras available");
+            installation.videoDetectors.forEach((camera) => {
+                this.log.info(`${JSON.stringify(camera)}`);
+                const uuid = this.api.hap.uuid.generate(`${camera.id}`);
+                // see if an accessory with the same uuid has already been registered and restored from the cached devices
+                const existingCamera = this.accessories.find(
+                    (accessory) => accessory.UUID === uuid
+                );
+
+                let accessory: PlatformAccessory | undefined;
+                if (existingCamera) {
+                    // the camera already exists
+                    this.log.info(
+                        "Restoring existing camera from cache:",
+                        existingCamera.displayName
+                    );
+
+                    existingCamera.context.camera = camera;
+                    existingAccessories.push(existingCamera);
+                    accessory = existingCamera;
+                } else {
+                    // the camera does not exist, so we need to create it
+                    this.log.info(
+                        "Adding new camera:",
+                        camera.description
+                    );
+                    accessory = new this.api.platformAccessory(
+                        camera.description,
+                        uuid
+                    );
+                    accessory.context.camera = camera;
+                    newAccesories.push(accessory);
+                }
+
+                try {
+                    new CameraAccesory(this, accessory);
+                } catch (e) {/* .. */ }
+
+            });
+        }
+    }
+
+    checkRemovedAccesories(installation: ProsegurInstallation[]): void {
+        const removedAccesories: PlatformAccessory[] =
+            this.accessories.filter((existing) =>
+                installation.find((installation) => {
+                    if (existing.context.installation) {
+                        return (
+                            installation.installationId ===
+                            existing.context.installation.installationId
+                        );
+                    } else if (existing.context.camera) {
+                        return installation.videoDetectors.find(
+                            (camera) =>
+                                camera.id === existing.context.camera.id
+                        );
+                    }
+                })
+                    ? false
+                    : existing
+            );
+        if (removedAccesories.length > 0) {
+            this.log.info(
+                "Removing accesories:" +
+                removedAccesories.map((item) => item.displayName)
+            );
+            this.api.unregisterPlatformAccessories(
+                PLUGIN_NAME,
+                PLATFORM_NAME,
+                removedAccesories
+            );
         }
     }
 }

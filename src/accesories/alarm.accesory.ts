@@ -6,16 +6,16 @@ import {
 } from "homebridge";
 
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
-import { AlarmStatus } from "../types/alarm-status.enum";
+import { ProsegurAlarmStatus } from "../types/prosegur-alarm-status.enum";
 
 export class AlarmAccesory {
     private service: Service;
     private readonly statesMap = [
-        AlarmStatus.PARTIALLY, // STAY_ARM = 0
-        AlarmStatus.ARMED, // AWAY_ARM = 1
-        AlarmStatus.PARTIALLY, // NIGHT_ARM = 2
-        AlarmStatus.DISARMED, // DISARMED = 3
-        AlarmStatus.ALARM, // ALARM_TRIGGERED = 4
+        ProsegurAlarmStatus.PARTIALLY, // STAY_ARM = 0
+        ProsegurAlarmStatus.ARMED, // AWAY_ARM = 1
+        ProsegurAlarmStatus.PARTIALLY, // NIGHT_ARM = 2
+        ProsegurAlarmStatus.DISARMED, // DISARMED = 3
+        ProsegurAlarmStatus.ALARM, // ALARM_TRIGGERED = 4
     ];
 
     private log: Logger;
@@ -54,6 +54,7 @@ export class AlarmAccesory {
             .getCharacteristic(
                 this.platform.Characteristic.SecuritySystemTargetState
             )
+            .setProps({ validValues: [0, 1, 3, 4] })
             .onSet(this.setStatus.bind(this))
             .onGet(this.getStatus.bind(this));
 
@@ -64,15 +65,15 @@ export class AlarmAccesory {
 
     async setStatus(value: CharacteristicValue) {
         this.log.debug(
-            `Setting installation status, value: ${this.statesMap[value as number]
-            }`
+            `Setting installation status, value: ${this.statesMap[value as number]}`
         );
         const installationId =
             this.accessory.context.installation.installationId;
-        this.platform.prosegurService.setStatus(
+        await this.platform.prosegurService.setStatus(
             installationId,
             this.statesMap[value as number]
         );
+        this.getStatus();
     }
 
     async getStatus(): Promise<CharacteristicValue> {
@@ -94,13 +95,13 @@ export class AlarmAccesory {
             installationId
         );
         switch (status) {
-            case AlarmStatus.ERROR_ARMED_TOTAL:
-            case AlarmStatus.ERROR_ARMED_TOTAL_COMMUNICATIONS:
-            case AlarmStatus.ERROR_DISARMED:
-            case AlarmStatus.ERROR_DISARMED_COMMUNICATIONS:
-            case AlarmStatus.ERROR_PARTIALLY:
-            case AlarmStatus.ERROR_PARTIALLY_COMMUNICATIONS:
-            case AlarmStatus.GENERAL_ERROR:
+            case ProsegurAlarmStatus.ERROR_ARMED_TOTAL:
+            case ProsegurAlarmStatus.ERROR_ARMED_TOTAL_COMMUNICATIONS:
+            case ProsegurAlarmStatus.ERROR_DISARMED:
+            case ProsegurAlarmStatus.ERROR_DISARMED_COMMUNICATIONS:
+            case ProsegurAlarmStatus.ERROR_PARTIALLY:
+            case ProsegurAlarmStatus.ERROR_PARTIALLY_COMMUNICATIONS:
+            case ProsegurAlarmStatus.GENERAL_ERROR:
                 return this.platform.Characteristic.StatusFault.GENERAL_FAULT;
             default:
                 return this.platform.Characteristic.StatusFault.NO_FAULT;
