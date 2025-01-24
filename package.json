@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Prosegur",
   "name": "homebridge-prosegur",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Prosegur plugin for Homebridge",
   "author": "Juan Luis Gómez",
   "license": "Apache-2.0",
@@ -15,7 +15,7 @@
   },
   "engines": {
     "node": ">=14.18.1",
-    "homebridge": ">=1.3.5"
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
   },
   "main": "dist/index.js",
   "scripts": {
@@ -44,7 +44,7 @@
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
-    "homebridge": "^1.4.0",
+    "homebridge": "^2.0.0-beta.0",
     "nodemon": "^2.0.13",
     "rimraf": "^3.0.2",
     "ts-node": "^10.3.0",

@@ -14,15 +14,14 @@ import { Container } from "typedi";
 import { ProsegurService } from "../services/prosegur.service";
 import { ProsegurInstallation } from "../types/prosegur-response.interface";
 import { CameraAccesory } from "../accesories/camera.accessory";
-import { AlarmAccesory } from "../accesories/alarm.accesory";
+import { InstallationAccesory } from "../accesories/installation.accesory";
+import { inspect } from "util";
 
 export class ProsegurPlatform implements DynamicPlatformPlugin {
-    public readonly Service: typeof Service = this.api.hap.Service;
-    public readonly Characteristic: typeof Characteristic =
-        this.api.hap.Characteristic;
 
+    public readonly Service: typeof Service;
+    public readonly Characteristic: typeof Characteristic;
     public readonly accessories: PlatformAccessory[] = [];
-
     public readonly prosegurService: ProsegurService = Container.get(ProsegurService);
 
     constructor(
@@ -30,8 +29,10 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
         public readonly config: PlatformConfig,
         public readonly api: API
     ) {
-        this.log.debug("Finished initializing platform:", this.config.name);
+        this.Service = api.hap.Service;
+        this.Characteristic = api.hap.Characteristic;
         this.prosegurService.init(config, log);
+        this.log.debug("Finished initializing platform:", this.config.name);
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
             this.discoverDevices();
         });
@@ -45,14 +46,18 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
     async discoverDevices(): Promise<void> {
         this.log.info("Discovering devices");
         try {
-            const installationResponse =
-                await this.prosegurService.getInstallations();
+            const installationResponse = await this.prosegurService.getInstallations();
             const newAccesories: PlatformAccessory[] = [];
             const existingAccessories: PlatformAccessory[] = [];
 
             for (const installation of installationResponse.data) {
-                this.checkInstallation(installation, newAccesories, existingAccessories);
+                let newInstallationAccesories: PlatformAccessory[] = [];
+                let existingInstallationAccessories: PlatformAccessory[] = [];
+                [newInstallationAccesories, existingInstallationAccessories] = this.checkInstallation(installation);
+                newAccesories.push(...newInstallationAccesories);
+                existingAccessories.push(...existingInstallationAccessories);
             }
+
             if (newAccesories.length > 0) {
                 this.log.info(
                     "Register new accesories:" +
@@ -85,7 +90,9 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
         }
     }
 
-    checkInstallation(installation: ProsegurInstallation, newAccesories: PlatformAccessory[], existingAccessories: PlatformAccessory[]): void {
+    checkInstallation(installation: ProsegurInstallation): [PlatformAccessory[], PlatformAccessory[]] {
+        const newAccesories: PlatformAccessory[] = [];
+        const existingAccessories: PlatformAccessory[] = [];
         const uuid = this.api.hap.uuid.generate(
             installation.installationId
         );
@@ -121,8 +128,11 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
         }
 
         try {
-            new AlarmAccesory(this, accessory);
-        } catch (e) {/* ... */ }
+            new InstallationAccesory(this, accessory);
+        } catch (e) {
+            this.log.error("Error creating alarm accesory");
+            this.log.error(inspect(e));
+        }
 
         if (this.config.enableVideoCamera && installation.videoDetectors.length > 0) {
             this.log.info("Installation has cameras available");
@@ -161,10 +171,14 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
 
                 try {
                     new CameraAccesory(this, accessory);
-                } catch (e) {/* .. */ }
+                } catch (e) {
+                    this.log.error("Error creating camera accesory");
+                    this.log.error(inspect(e));
+                }
 
             });
         }
+        return [newAccesories, existingAccessories];
     }
 
     checkRemovedAccesories(installation: ProsegurInstallation[]): void {
