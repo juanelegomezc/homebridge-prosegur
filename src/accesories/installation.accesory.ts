@@ -8,7 +8,7 @@ import {
 import { ProsegurPlatform } from "../platforms/prosegur.platform";
 import { ProsegurAlarmStatus } from "../types/prosegur-alarm-status.enum";
 
-export class AlarmAccesory {
+export class InstallationAccesory {
     private service: Service;
     private readonly statesMap = [
         ProsegurAlarmStatus.PARTIALLY, // STAY_ARM = 0
