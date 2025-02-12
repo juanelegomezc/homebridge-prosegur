@@ -137,7 +137,7 @@ export class ProsegurPlatform implements DynamicPlatformPlugin {
         if (this.config.enableVideoCamera && installation.videoDetectors.length > 0) {
             this.log.info("Installation has cameras available");
             installation.videoDetectors.forEach((camera) => {
-                this.log.info(`${JSON.stringify(camera)}`);
+                this.log.info(`Video Detector: ${JSON.stringify(camera)}`);
                 const uuid = this.api.hap.uuid.generate(`${camera.id}`);
                 // see if an accessory with the same uuid has already been registered and restored from the cached devices
                 const existingCamera = this.accessories.find(
