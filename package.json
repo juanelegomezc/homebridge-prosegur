@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Prosegur",
   "name": "homebridge-prosegur",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Prosegur plugin for Homebridge",
   "author": "Juan Luis Gómez",
   "license": "Apache-2.0",
