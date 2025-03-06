@@ -6,8 +6,8 @@ import {
     ProsegurAuthResponse,
     ProsegurInstallationsResponse,
     ProsegurResponse,
-    ProsegurInstallationResponse,
     ProsegurCameraResponse,
+    ProsegurPanelStatusResponse,
 } from "../types/prosegur-response.interface";
 import { ProsegurCountry, ProsegurCountryCode } from "../types/prosegur-country.interface";
 import { Logger, PlatformConfig } from "homebridge";
@@ -17,7 +17,7 @@ import { ConfigService } from "./config.service";
 @Service({ transient: true })
 export class ProsegurService {
     private readonly SMART_SERVER_WS: string =
-        "https://smart.prosegur.com/smart-server/ws";
+        "https://api-smart.prosegur.cloud/smart-server/ws";
 
     private readonly MAX_RETRIES_COUNT = 3;
     private readonly TOKEN_HEADER = "X-Smart-Token";
@@ -39,6 +39,16 @@ export class ProsegurService {
             webOrigin: "WebM",
         },
         AR: {
+            origin: "https://smart.prosegur.com/smart-individuo",
+            referer: "https://smart.prosegur.com/smart-individuo/login.html",
+            webOrigin: "Web",
+        },
+        PY: {
+            origin: "https://smart.prosegur.com/smart-individuo",
+            referer: "https://smart.prosegur.com/smart-individuo/login.html",
+            webOrigin: "Web",
+        },
+        UY: {
             origin: "https://smart.prosegur.com/smart-individuo",
             referer: "https://smart.prosegur.com/smart-individuo/login.html",
             webOrigin: "Web",
@@ -139,17 +149,17 @@ export class ProsegurService {
 
     async getStatus(installationId: string): Promise<ProsegurAlarmStatus> {
         try {
-            const response = await this.request<ProsegurInstallationResponse>(
+            const response = await this.request<ProsegurPanelStatusResponse>(
                 "get",
-                `/installation/${installationId}`
+                `/installation/${installationId}/panel-status`
             );
-            const installation = response.data;
-            if (installation) {
-                this.log?.debug(`Installation: ${JSON.stringify(installation)}`);
-                return installation.status;
+            const data = response.data;
+            if (data) {
+                this.log?.debug(`Installation: ${JSON.stringify(data)}`);
+                return data.status;
             }
             this.log?.debug("No installation found");
-            return ProsegurAlarmStatus.DISARMED;
+            return ProsegurAlarmStatus.GENERAL_ERROR;
         } catch (error) {
             this.log?.debug("Error fetching installation information");
             return ProsegurAlarmStatus.GENERAL_ERROR;

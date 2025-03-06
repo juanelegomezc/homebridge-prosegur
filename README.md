@@ -38,12 +38,14 @@ When configuring this plugin, simply add the platform to your existing `config.j
 **name:** Name that will be showed in Homekit.
 **username:** The email you use to login to the prosegur web console.
 **password:** The password you use to login to the prosegur web console.
-**country:** Can be **AR**, **CO**, **ES** or **PT**.
-**enableVideoCamera:** Show installed camera?
+**country:** Can be **AR**, **CO**, **ES**, **PT**, **PY** or **UY**.
+**enableVideoCamera:** true or false. Show installed camera? (beta)
+
 ## Notes
 This project has no relationship with Prosegur (unofficial library).
 The component uses the API provided by the Web Application.
-Has only been tested in Colombia, but should also work in Spain, Portugal and Argentina.
+Has only been tested in Colombia, but should also work in Spain, Portugal, Argentina, Paraguay and Uruguay.
+
 ## Credits and Appreciation
 Based on the [pyprosegur](https://github.com/dgomes/pyprosegur) library by [@dgomes](https://github.com/dgomes)
 Video streaming suppport based on [homebridge-camera-ffmpeg](https://github.com/Sunoo/homebridge-camera-ffmpeg).

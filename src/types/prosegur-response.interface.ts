@@ -140,3 +140,9 @@ export interface ProsegurInstallationResponse extends ProsegurResponse {
 export interface ProsegurCameraResponse extends ProsegurResponse {
     data: ProsegurCameraAuth;
 }
+
+export interface ProsegurPanelStatusResponse extends ProsegurResponse {
+    data: {
+        status: ProsegurAlarmStatus;
+    };
+}
